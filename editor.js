@@ -14,13 +14,21 @@ const saveBtn = document.getElementById("saveBtn");
 const closeBtn = document.getElementById("closeBtn");
 const colorInput = document.getElementById("colorInput");
 const sizeInput = document.getElementById("sizeInput");
+const zoomOutBtn = document.getElementById("zoomOutBtn");
+const zoomInBtn = document.getElementById("zoomInBtn");
+const actualSizeBtn = document.getElementById("actualSizeBtn");
+const zoomLabel = document.getElementById("zoomLabel");
+const pixelLabel = document.getElementById("pixelLabel");
 const toolButtons = Array.from(document.querySelectorAll(".tool"));
 
 const api = window.screenshotMarker || {};
 const state = {
   image: null,
+  baseDisplayWidth: 0,
+  baseDisplayHeight: 0,
   displayWidth: 0,
   displayHeight: 0,
+  zoom: 1,
   annotations: [],
   tool: "move",
   color: colorInput.value,
@@ -55,6 +63,43 @@ function updateButtons() {
   canvas.classList.toggle("hidden", !hasImage);
 }
 
+function getToolbarHeight() {
+  const toolbar = document.querySelector(".toolbar");
+  return Math.ceil((toolbar && toolbar.getBoundingClientRect().height) || 58);
+}
+
+function updateZoomLabel() {
+  if (zoomLabel) {
+    zoomLabel.textContent = `${Math.round(state.zoom * 100)}%`;
+  }
+}
+
+function updatePixelLabel() {
+  if (pixelLabel) {
+    pixelLabel.textContent = `${canvas.width} x ${canvas.height}`;
+  }
+}
+
+function applyDisplaySize() {
+  state.displayWidth = Math.max(1, Math.round(state.baseDisplayWidth * state.zoom));
+  state.displayHeight = Math.max(1, Math.round(state.baseDisplayHeight * state.zoom));
+  canvas.style.width = `${state.displayWidth}px`;
+  canvas.style.height = `${state.displayHeight}px`;
+  updateZoomLabel();
+
+  if (api.resizeEditor) {
+    api.resizeEditor({
+      width: Math.max(430, state.displayWidth),
+      height: state.displayHeight + getToolbarHeight()
+    });
+  }
+}
+
+function setZoom(nextZoom) {
+  state.zoom = Math.min(4, Math.max(0.1, nextZoom));
+  applyDisplaySize();
+}
+
 function loadImage(dataUrl) {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -70,12 +115,13 @@ async function setImage(dataUrl, message, displaySize = {}) {
   state.annotations = [];
   state.current = null;
   state.nextNumber = 1;
+  state.zoom = 1;
   canvas.width = image.naturalWidth || image.width;
   canvas.height = image.naturalHeight || image.height;
-  state.displayWidth = Math.round(displaySize.width || canvas.width);
-  state.displayHeight = Math.round(displaySize.height || canvas.height);
-  canvas.style.width = `${state.displayWidth}px`;
-  canvas.style.height = `${state.displayHeight}px`;
+  updatePixelLabel();
+  state.baseDisplayWidth = Math.max(1, Math.round(displaySize.width || canvas.width));
+  state.baseDisplayHeight = Math.max(1, Math.round(displaySize.height || canvas.height));
+  applyDisplaySize();
   render();
   updateButtons();
   setStatus(message || `已载入图片 ${canvas.width} x ${canvas.height}`);
@@ -407,6 +453,25 @@ colorInput.addEventListener("input", () => {
 
 sizeInput.addEventListener("input", () => {
   state.size = Number(sizeInput.value);
+});
+
+zoomOutBtn.addEventListener("click", () => {
+  setZoom(state.zoom - 0.1);
+});
+
+zoomInBtn.addEventListener("click", () => {
+  setZoom(state.zoom + 0.1);
+});
+
+actualSizeBtn.addEventListener("click", () => {
+  if (!state.baseDisplayWidth || !state.baseDisplayHeight) return;
+  setZoom(Math.min(canvas.width / state.baseDisplayWidth, canvas.height / state.baseDisplayHeight));
+});
+
+canvas.addEventListener("wheel", (event) => {
+  if (!event.metaKey && !event.ctrlKey) return;
+  event.preventDefault();
+  setZoom(state.zoom + (event.deltaY < 0 ? 0.1 : -0.1));
 });
 
 canvas.addEventListener("pointerdown", (event) => {

@@ -176,6 +176,19 @@ canvas.hidden {
   accent-color: var(--accent);
 }
 
+.zoom-label,
+.pixel-label {
+  min-width: 42px;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.pixel-label {
+  min-width: 72px;
+}
+
 .empty {
   position: absolute;
   inset: 0;

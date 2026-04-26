@@ -179,6 +179,8 @@ function cropSelection() {
       dataUrl: canvas.toDataURL("image/png"),
       displayWidth: Math.round(rect.w),
       displayHeight: Math.round(rect.h),
+      pixelWidth: sw,
+      pixelHeight: sh,
       windowX: Math.round((state.bounds.x || 0) + rect.x),
       windowY: Math.round((state.bounds.y || 0) + rect.y)
     });

@@ -384,6 +384,15 @@ ipcRenderer.on("pin:resize", (event, payload) => {
   win.setSize(width, height);
 });
 
+ipcRenderer.on("editor:resize", (event, payload) => {
+  const win = getChildWindow(event);
+  if (!win) return;
+  const data = typeof payload === "string" ? JSON.parse(payload) : payload;
+  const width = Math.max(120, Math.round(data.width || 120));
+  const height = Math.max(80, Math.round(data.height || 80));
+  win.setSize(width, height);
+});
+
 ipcRenderer.on("pin:opacity", (event, payload) => {
   const win = getChildWindow(event);
   if (!win) return;
@@ -414,6 +423,8 @@ ipcRenderer.on("selection:complete", (event, payload) => {
   createEditorWindow(data.dataUrl, {
     displayWidth: data.displayWidth,
     displayHeight: data.displayHeight,
+    pixelWidth: data.pixelWidth,
+    pixelHeight: data.pixelHeight,
     windowX: data.windowX,
     windowY: data.windowY
   });
@@ -501,8 +512,14 @@ window.screenshotMarker = {
     throw new Error("剪贴板中没有图片或文本");
   },
 
-	  openEditor(dataUrl) {
+  openEditor(dataUrl) {
     return createEditorWindow(dataUrl);
+  },
+
+  resizeEditor(size) {
+    if (window.utools && window.utools.sendToParent) {
+      window.utools.sendToParent("editor:resize", JSON.stringify(size));
+    }
   },
 
   openSelection() {

@@ -34,10 +34,15 @@
             <label class="control width-control" title="线宽">
               <input id="sizeInput" type="range" min="2" max="22" value="5">
             </label>
+            <span class="pixel-label" id="pixelLabel" title="图片实际像素">0 x 0</span>
           </section>
 
           <section class="tool-row">
             <input id="fileInput" type="file" accept="image/*" hidden>
+            <button class="icon-btn" id="zoomOutBtn" type="button" title="缩小">−</button>
+            <span class="zoom-label" id="zoomLabel">100%</span>
+            <button class="icon-btn" id="zoomInBtn" type="button" title="放大">+</button>
+            <button class="icon-btn" id="actualSizeBtn" type="button" title="实际像素">1:1</button>
             <button class="icon-btn" id="undoBtn" type="button" title="撤销" disabled>↶</button>
             <button class="icon-btn" id="clearBtn" type="button" title="清空标记" disabled>⌫</button>
             <button class="icon-btn" id="pinBtn" type="button" title="贴图" disabled>
