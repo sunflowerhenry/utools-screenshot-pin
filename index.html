@@ -3,66 +3,15 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>截图标记</title>
-    <link rel="stylesheet" href="index.css">
+    <title>截图工具</title>
+    <link rel="stylesheet" href="launcher.css">
   </head>
   <body>
-    <main class="app">
-      <section class="stage" id="dropZone">
-        <canvas id="canvas" width="1200" height="720"></canvas>
-        <div class="empty" id="emptyState">
-          <h1>截图标记</h1>
-          <p>点击截图开始，或拖入图片进行标记。</p>
-        </div>
-        <header class="toolbar" aria-label="截图编辑工具栏">
-          <section class="tool-row">
-            <button class="primary icon-btn" id="captureBtn" type="button" title="截图">⛶</button>
-            <button class="icon-btn" id="openBtn" type="button" title="打开图片">▣</button>
-            <input id="fileInput" type="file" accept="image/*" hidden>
-          </section>
-
-          <section class="tool-row segmented" aria-label="标记工具">
-            <button class="tool icon-btn active" data-tool="pen" type="button" title="画笔">✎</button>
-            <button class="tool icon-btn" data-tool="line" type="button" title="直线">╱</button>
-            <button class="tool icon-btn" data-tool="arrow" type="button" title="箭头">↗</button>
-            <button class="tool icon-btn" data-tool="rect" type="button" title="矩形">□</button>
-            <button class="tool icon-btn" data-tool="ellipse" type="button" title="圆形">○</button>
-            <button class="tool icon-btn" data-tool="mosaic" type="button" title="打码">▦</button>
-            <button class="tool icon-btn" data-tool="number" type="button" title="数字标注">①</button>
-            <button class="tool icon-btn" data-tool="text" type="button" title="文字">T</button>
-          </section>
-
-          <section class="tool-row">
-            <label class="control color-control" title="颜色">
-              <input id="colorInput" type="color" value="#ff3b30">
-            </label>
-            <label class="control width-control" title="线宽">
-              <input id="sizeInput" type="range" min="2" max="22" value="5">
-            </label>
-          </section>
-
-          <section class="tool-row">
-            <button class="icon-btn" id="undoBtn" type="button" title="撤销" disabled>↶</button>
-            <button class="icon-btn" id="clearBtn" type="button" title="清空标记" disabled>⌫</button>
-            <button class="icon-btn" id="pinBtn" type="button" title="贴图" disabled>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 5 3 2v2H5v-2l3-2 1-5Z"/><path d="M12 12v8"/><path d="m9 20 3-3 3 3"/></svg>
-            </button>
-            <button class="icon-btn" id="copyBtn" type="button" title="复制" disabled>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></svg>
-            </button>
-            <button class="icon-btn" id="saveBtn" type="button" title="保存" disabled>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
-            </button>
-            <button class="icon-btn danger" id="closeBtn" type="button" title="关闭">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-            </button>
-          </section>
-        </header>
-      </section>
-
-      <footer class="status" id="status">准备就绪</footer>
+    <main class="launcher">
+      <button id="captureBtn" type="button">截图</button>
+      <button id="pinBtn" type="button">贴图</button>
+      <p id="status">兼容入口：请在 uTools 开发者工具中重新加载插件。</p>
     </main>
-
-    <script src="index.js"></script>
+    <script src="launcher.js"></script>
   </body>
 </html>

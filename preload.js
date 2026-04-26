@@ -209,11 +209,11 @@ function createEditorWindow(dataUrl) {
   const scale = Math.min(1, maxWidth / dipSize.width, maxImageHeight / dipSize.height);
   const displayWidth = Math.max(120, Math.round(dipSize.width * scale));
   const displayHeight = Math.max(80, Math.round(dipSize.height * scale));
-  const width = displayWidth;
+  const width = Math.max(430, displayWidth);
   const height = displayHeight + toolbarHeight;
   const { x, y } = getEditorWindowPosition(width, height);
   const win = window.utools.createBrowserWindow(
-    "index.html",
+    "editor.html",
     {
       show: false,
       x,

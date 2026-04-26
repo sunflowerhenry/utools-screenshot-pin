@@ -20,7 +20,8 @@
 
 - `plugin.json`：uTools 插件配置。
 - `launcher.html` / `launcher.css` / `launcher.js`：uTools 小入口窗口。
-- `index.html` / `index.css` / `index.js`：独立截图编辑窗口。
+- `index.html`：兼容入口，避免旧配置继续打开编辑主面板。
+- `editor.html` / `editor.css` / `editor.js`：独立截图编辑窗口。
 - `preload.js`：截图、保存、复制、剪贴板贴图、窗口创建等 uTools/Electron 能力。
 - `pin.html` / `pin.css` / `pin.js` / `pin-preload.js`：贴图悬浮窗口。
 - `logo.png`：插件图标，尺寸为 256 x 256 PNG。

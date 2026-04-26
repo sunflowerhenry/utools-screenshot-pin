@@ -387,9 +387,13 @@ function normalizeFilePayload(payload) {
   return null;
 }
 
-captureBtn.addEventListener("click", startCapture);
+if (captureBtn) {
+  captureBtn.addEventListener("click", startCapture);
+}
 
-openBtn.addEventListener("click", () => fileInput.click());
+if (openBtn) {
+  openBtn.addEventListener("click", () => fileInput.click());
+}
 fileInput.addEventListener("change", () => handleFile(fileInput.files[0]));
 
 toolButtons.forEach((button) => {

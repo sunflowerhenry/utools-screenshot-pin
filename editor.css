@@ -95,9 +95,8 @@ canvas.hidden {
 }
 
 .segmented {
-  border-left: 1px solid var(--line);
   border-right: 1px solid var(--line);
-  padding: 0 6px;
+  padding-right: 6px;
 }
 
 .icon-btn {
