@@ -1,9 +1,9 @@
 {
-  "main": "index.html",
+  "main": "launcher.html",
   "logo": "logo.png",
   "preload": "preload.js",
   "pluginSetting": {
-    "height": 720,
+    "height": 120,
     "single": true
   },
   "features": [

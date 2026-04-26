@@ -11,6 +11,7 @@ const clearBtn = document.getElementById("clearBtn");
 const pinBtn = document.getElementById("pinBtn");
 const copyBtn = document.getElementById("copyBtn");
 const saveBtn = document.getElementById("saveBtn");
+const closeBtn = document.getElementById("closeBtn");
 const colorInput = document.getElementById("colorInput");
 const sizeInput = document.getElementById("sizeInput");
 const toolButtons = Array.from(document.querySelectorAll(".tool"));
@@ -524,6 +525,14 @@ saveBtn.addEventListener("click", () => {
   }
 });
 
+closeBtn.addEventListener("click", () => {
+  if (api.closeWindow) {
+    api.closeWindow();
+    return;
+  }
+  window.close();
+});
+
 dropZone.addEventListener("dragover", (event) => {
   event.preventDefault();
   dropZone.classList.add("dragging");
@@ -585,6 +594,24 @@ if (window.utools) {
     }
   });
 }
+
+window.addEventListener("editor:init", async (event) => {
+  try {
+    await setImage(event.detail.dataUrl, "截图完成，可以开始标记");
+  } catch (error) {
+    setStatus(error.message || "载入截图失败");
+  }
+});
+
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    if (api.closeWindow) {
+      api.closeWindow();
+      return;
+    }
+    window.close();
+  }
+});
 
 render();
 updateButtons();

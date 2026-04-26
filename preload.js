@@ -2,7 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { clipboard, ipcRenderer, nativeImage } = require("electron");
 
-const pinWindows = new Map();
+const childWindows = new Map();
 
 function dataUrlToBuffer(dataUrl) {
   const match = /^data:image\/[\w+.-]+;base64,(.+)$/.exec(dataUrl || "");
@@ -44,18 +44,10 @@ function getPinSize(imageSize) {
   };
 }
 
-function createPinWindow(dataUrl) {
-  if (!window.utools || !window.utools.createBrowserWindow) {
-    throw new Error("当前环境没有 uTools 独立窗口 API");
-  }
-
-  const image = nativeImage.createFromDataURL(dataUrl);
-  const imageSize = image.getSize();
-  if (image.isEmpty() || !imageSize.width || !imageSize.height) {
-    throw new Error("贴图失败，图片为空");
-  }
-
-  const { width, height, point, bounds } = getPinSize(imageSize);
+function getWindowPosition(width, height) {
+  const point = window.utools.getCursorScreenPoint();
+  const display = window.utools.getDisplayNearestPoint(point);
+  const bounds = display.workArea || display.bounds || { x: 0, y: 0, width: 1200, height: 800 };
   const x = Math.min(
     Math.max(bounds.x || 0, point.x - Math.floor(width / 2)),
     (bounds.x || 0) + bounds.width - width
@@ -64,6 +56,35 @@ function createPinWindow(dataUrl) {
     Math.max(bounds.y || 0, point.y - Math.floor(height / 2)),
     (bounds.y || 0) + bounds.height - height
   );
+  return { x, y, bounds };
+}
+
+function createPinWindow(payload) {
+  if (!window.utools || !window.utools.createBrowserWindow) {
+    throw new Error("当前环境没有 uTools 独立窗口 API");
+  }
+
+  let size;
+  if (payload.type === "image") {
+    const image = nativeImage.createFromDataURL(payload.dataUrl);
+    const imageSize = image.getSize();
+    if (image.isEmpty() || !imageSize.width || !imageSize.height) {
+      throw new Error("贴图失败，图片为空");
+    }
+    size = getPinSize(imageSize);
+    payload.naturalWidth = imageSize.width;
+    payload.naturalHeight = imageSize.height;
+  } else {
+    const lines = wrapText(payload.text, 28);
+    size = {
+      width: Math.min(640, Math.max(260, Math.max(...lines.map((line) => line.length)) * 15 + 48)),
+      height: Math.min(620, Math.max(120, lines.length * 25 + 64))
+    };
+    payload.lines = lines;
+  }
+
+  const { width, height } = size;
+  const { x, y } = getWindowPosition(width, height);
 
   const win = window.utools.createBrowserWindow(
     "pin.html",
@@ -91,13 +112,11 @@ function createPinWindow(dataUrl) {
       }
     },
     () => {
-      pinWindows.set(win.webContents.id, win);
+      childWindows.set(win.webContents.id, win);
       win.webContents.send("pin:init", {
-        dataUrl,
+        ...payload,
         width,
-        height,
-        naturalWidth: imageSize.width,
-        naturalHeight: imageSize.height
+        height
       });
       win.setAlwaysOnTop(true, "screen-saver");
       win.show();
@@ -108,19 +127,81 @@ function createPinWindow(dataUrl) {
   return true;
 }
 
-function getPinWindow(event) {
-  return pinWindows.get(event.senderId);
+function wrapText(text, maxLength) {
+  const cleanText = String(text || "").replace(/\r\n/g, "\n").trim();
+  const lines = [];
+  cleanText.split("\n").forEach((line) => {
+    if (!line) {
+      lines.push("");
+      return;
+    }
+    let rest = line;
+    while (rest.length > maxLength) {
+      lines.push(rest.slice(0, maxLength));
+      rest = rest.slice(maxLength);
+    }
+    lines.push(rest);
+  });
+  return lines.length ? lines : ["空文本"];
+}
+
+function createEditorWindow(dataUrl) {
+  if (!window.utools || !window.utools.createBrowserWindow) {
+    throw new Error("当前环境没有 uTools 独立窗口 API");
+  }
+  const image = nativeImage.createFromDataURL(dataUrl);
+  const imageSize = image.getSize();
+  if (image.isEmpty() || !imageSize.width || !imageSize.height) {
+    throw new Error("截图图片为空");
+  }
+  const size = getPinSize(imageSize);
+  const width = Math.max(520, size.width);
+  const height = Math.max(360, size.height + 92);
+  const { x, y } = getWindowPosition(width, height);
+  const win = window.utools.createBrowserWindow(
+    "index.html",
+    {
+      show: false,
+      x,
+      y,
+      width,
+      height,
+      minWidth: 360,
+      minHeight: 240,
+      useContentSize: true,
+      frame: false,
+      transparent: false,
+      backgroundColor: "#111827",
+      hasShadow: true,
+      resizable: true,
+      autoHideMenuBar: true,
+      webPreferences: {
+        preload: "preload.js"
+      }
+    },
+    () => {
+      childWindows.set(win.webContents.id, win);
+      win.webContents.send("editor:init", { dataUrl });
+      win.show();
+      win.focus();
+    }
+  );
+  return true;
+}
+
+function getChildWindow(event) {
+  return childWindows.get(event.senderId);
 }
 
 ipcRenderer.on("pin:close", (event) => {
-  const win = getPinWindow(event);
+  const win = getChildWindow(event);
   if (!win) return;
-  pinWindows.delete(event.senderId);
+  childWindows.delete(event.senderId);
   win.destroy();
 });
 
 ipcRenderer.on("pin:resize", (event, payload) => {
-  const win = getPinWindow(event);
+  const win = getChildWindow(event);
   if (!win) return;
   const data = typeof payload === "string" ? JSON.parse(payload) : payload;
   const width = Math.max(120, Math.round(data.width || 120));
@@ -129,15 +210,19 @@ ipcRenderer.on("pin:resize", (event, payload) => {
 });
 
 ipcRenderer.on("pin:opacity", (event, payload) => {
-  const win = getPinWindow(event);
+  const win = getChildWindow(event);
   if (!win) return;
   const data = typeof payload === "string" ? JSON.parse(payload) : payload;
   const opacity = Math.min(1, Math.max(0.25, Number(data.opacity) || 1));
   win.setOpacity(opacity);
 });
 
+ipcRenderer.on("editor:init", (event, payload) => {
+  window.dispatchEvent(new CustomEvent("editor:init", { detail: payload }));
+});
+
 window.screenshotMarker = {
-  captureScreen() {
+  captureScreen(options = {}) {
     return new Promise((resolve, reject) => {
       if (!window.utools || !window.utools.screenCapture) {
         reject(new Error("当前环境没有 uTools 截图 API"));
@@ -147,7 +232,9 @@ window.screenshotMarker = {
       window.utools.hideMainWindow(true);
       setTimeout(() => {
         window.utools.screenCapture((image) => {
-          window.utools.showMainWindow();
+          if (options.restoreMainWindow !== false) {
+            window.utools.showMainWindow();
+          }
           if (image) {
             resolve(image);
           } else {
@@ -195,7 +282,33 @@ window.screenshotMarker = {
   },
 
   pinImage(dataUrl) {
-    return createPinWindow(dataUrl);
+    return createPinWindow({ type: "image", dataUrl });
+  },
+
+  pinText(text) {
+    return createPinWindow({ type: "text", text });
+  },
+
+  pinClipboard() {
+    const image = clipboard.readImage();
+    if (image && !image.isEmpty()) {
+      createPinWindow({ type: "image", dataUrl: image.toDataURL() });
+      return "已贴出剪贴板图片";
+    }
+    const text = clipboard.readText();
+    if (text && text.trim()) {
+      createPinWindow({ type: "text", text });
+      return "已贴出剪贴板文本";
+    }
+    throw new Error("剪贴板中没有图片或文本");
+  },
+
+  openEditor(dataUrl) {
+    return createEditorWindow(dataUrl);
+  },
+
+  closeWindow() {
+    window.close();
   },
 
   showNotification(message) {

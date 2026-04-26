@@ -9,6 +9,7 @@ function sendToParent(channel, payload) {
 window.pinWindow = {
   close() {
     sendToParent("pin:close");
+    window.close();
   },
 
   resize(width, height) {
@@ -19,8 +20,12 @@ window.pinWindow = {
     sendToParent("pin:opacity", { opacity });
   },
 
-  copyImage(dataUrl) {
-    const image = nativeImage.createFromDataURL(dataUrl);
+  copyContent(content) {
+    if (content && content.type === "text") {
+      clipboard.writeText(content.text || "");
+      return;
+    }
+    const image = nativeImage.createFromDataURL(content.dataUrl || "");
     if (!image.isEmpty()) {
       clipboard.writeImage(image);
     }

@@ -1,4 +1,5 @@
 const image = document.getElementById("pinImage");
+const textNode = document.getElementById("pinText");
 const closeBtn = document.getElementById("closeBtn");
 const copyBtn = document.getElementById("copyBtn");
 const opacityInput = document.getElementById("opacityInput");
@@ -6,6 +7,8 @@ const resizeHandle = document.getElementById("resizeHandle");
 
 const pinState = {
   dataUrl: "",
+  text: "",
+  type: "image",
   naturalWidth: 0,
   naturalHeight: 0,
   resizing: false,
@@ -17,23 +20,37 @@ const pinState = {
 
 window.addEventListener("pin:init", (event) => {
   const detail = event.detail || {};
+  pinState.type = detail.type || "image";
   pinState.dataUrl = detail.dataUrl || "";
+  pinState.text = detail.text || "";
   pinState.naturalWidth = detail.naturalWidth || detail.width || 1;
   pinState.naturalHeight = detail.naturalHeight || detail.height || 1;
-  image.src = pinState.dataUrl;
+
+  const isText = pinState.type === "text";
+  image.classList.toggle("hidden", isText);
+  textNode.classList.toggle("hidden", !isText);
+  if (isText) {
+    textNode.textContent = pinState.text;
+  } else {
+    image.src = pinState.dataUrl;
+  }
 });
 
-closeBtn.addEventListener("click", () => {
+function closePin() {
   if (window.pinWindow && window.pinWindow.close) {
     window.pinWindow.close();
     return;
   }
   window.close();
+}
+
+closeBtn.addEventListener("click", () => {
+  closePin();
 });
 
 copyBtn.addEventListener("click", () => {
-  if (window.pinWindow && window.pinWindow.copyImage) {
-    window.pinWindow.copyImage(pinState.dataUrl);
+  if (window.pinWindow && window.pinWindow.copyContent) {
+    window.pinWindow.copyContent({ type: pinState.type, dataUrl: pinState.dataUrl, text: pinState.text });
   }
 });
 
@@ -62,6 +79,12 @@ resizeHandle.addEventListener("pointermove", (event) => {
   const width = Math.max(120, Math.round(Math.max(nextWidthFromX, nextWidthFromY)));
   const height = Math.max(80, Math.round(width / ratio));
   window.pinWindow.resize(width, height);
+});
+
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closePin();
+  }
 });
 
 resizeHandle.addEventListener("pointerup", (event) => {

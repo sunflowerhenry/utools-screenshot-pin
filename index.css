@@ -136,6 +136,11 @@ canvas.hidden {
   background: var(--accent);
 }
 
+.icon-btn.danger:hover {
+  color: #fff;
+  background: var(--danger);
+}
+
 .control {
   display: inline-flex;
   align-items: center;
