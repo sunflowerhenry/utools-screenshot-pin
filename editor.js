@@ -100,6 +100,19 @@ function setZoom(nextZoom) {
   applyDisplaySize();
 }
 
+function getDefaultDisplaySize(displaySize) {
+  const ratio = window.devicePixelRatio || 1;
+  const visualWidth = Math.max(1, Math.round(canvas.width / ratio));
+  const visualHeight = Math.max(1, Math.round(canvas.height / ratio));
+  const requestedWidth = Math.max(1, Math.round(displaySize.width || visualWidth));
+  const requestedHeight = Math.max(1, Math.round(displaySize.height || visualHeight));
+
+  return {
+    width: Math.min(requestedWidth, visualWidth),
+    height: Math.min(requestedHeight, visualHeight)
+  };
+}
+
 function loadImage(dataUrl) {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -119,8 +132,9 @@ async function setImage(dataUrl, message, displaySize = {}) {
   canvas.width = image.naturalWidth || image.width;
   canvas.height = image.naturalHeight || image.height;
   updatePixelLabel();
-  state.baseDisplayWidth = Math.max(1, Math.round(displaySize.width || canvas.width));
-  state.baseDisplayHeight = Math.max(1, Math.round(displaySize.height || canvas.height));
+  const defaultDisplaySize = getDefaultDisplaySize(displaySize);
+  state.baseDisplayWidth = defaultDisplaySize.width;
+  state.baseDisplayHeight = defaultDisplaySize.height;
   applyDisplaySize();
   render();
   updateButtons();
