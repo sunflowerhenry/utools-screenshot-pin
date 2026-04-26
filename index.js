@@ -19,6 +19,8 @@ const toolButtons = Array.from(document.querySelectorAll(".tool"));
 const api = window.screenshotMarker || {};
 const state = {
   image: null,
+  displayWidth: 0,
+  displayHeight: 0,
   annotations: [],
   tool: "pen",
   color: colorInput.value,
@@ -61,7 +63,7 @@ function loadImage(dataUrl) {
   });
 }
 
-async function setImage(dataUrl, message) {
+async function setImage(dataUrl, message, displaySize = {}) {
   const image = await loadImage(dataUrl);
   state.image = image;
   state.annotations = [];
@@ -69,6 +71,10 @@ async function setImage(dataUrl, message) {
   state.nextNumber = 1;
   canvas.width = image.naturalWidth || image.width;
   canvas.height = image.naturalHeight || image.height;
+  state.displayWidth = Math.round(displaySize.width || canvas.width);
+  state.displayHeight = Math.round(displaySize.height || canvas.height);
+  canvas.style.width = `${state.displayWidth}px`;
+  canvas.style.height = `${state.displayHeight}px`;
   render();
   updateButtons();
   setStatus(message || `已载入图片 ${canvas.width} x ${canvas.height}`);
@@ -353,24 +359,17 @@ async function startCapture() {
 }
 
 async function startCaptureToPin() {
-  if (state.capturing) return;
-  state.capturing = true;
   try {
-    setStatus("正在进入截图贴图模式...");
-    const dataUrl = await api.captureScreen();
-    if (api.pinImage) {
-      api.pinImage(dataUrl);
-      setStatus("已创建贴图窗口");
+    if (api.pinClipboard) {
+      setStatus(api.pinClipboard());
       if (window.utools) {
         window.utools.outPlugin();
       }
       return;
     }
-    await setImage(dataUrl, "截图完成，当前环境不支持贴图窗口");
+    setStatus("当前环境不支持剪贴板贴图");
   } catch (error) {
-    setStatus(error.message || "截图贴图失败");
-  } finally {
-    state.capturing = false;
+    setStatus(error.message || "贴图失败");
   }
 }
 
@@ -597,7 +596,10 @@ if (window.utools) {
 
 window.addEventListener("editor:init", async (event) => {
   try {
-    await setImage(event.detail.dataUrl, "截图完成，可以开始标记");
+    await setImage(event.detail.dataUrl, "截图完成，可以开始标记", {
+      width: event.detail.displayWidth,
+      height: event.detail.displayHeight
+    });
   } catch (error) {
     setStatus(error.message || "载入截图失败");
   }

@@ -31,13 +31,18 @@ function getPinSize(imageSize) {
   const point = window.utools.getCursorScreenPoint();
   const display = window.utools.getDisplayNearestPoint(point);
   const bounds = display.workArea || display.bounds || { width: 1200, height: 800 };
+  const scaleFactor = display.scaleFactor || 1;
+  const naturalWidth = Math.max(1, imageSize.width / scaleFactor);
+  const naturalHeight = Math.max(1, imageSize.height / scaleFactor);
   const maxWidth = Math.max(240, Math.floor(bounds.width * 0.72));
   const maxHeight = Math.max(160, Math.floor(bounds.height * 0.72));
-  const scale = Math.min(1, maxWidth / imageSize.width, maxHeight / imageSize.height);
+  const scale = Math.min(1, maxWidth / naturalWidth, maxHeight / naturalHeight);
 
   return {
-    width: Math.max(120, Math.round(imageSize.width * scale)),
-    height: Math.max(80, Math.round(imageSize.height * scale)),
+    width: Math.max(120, Math.round(naturalWidth * scale)),
+    height: Math.max(80, Math.round(naturalHeight * scale)),
+    naturalWidth: Math.round(naturalWidth),
+    naturalHeight: Math.round(naturalHeight),
     point,
     display,
     bounds
@@ -74,6 +79,8 @@ function createPinWindow(payload) {
     size = getPinSize(imageSize);
     payload.naturalWidth = imageSize.width;
     payload.naturalHeight = imageSize.height;
+    payload.displayWidth = size.naturalWidth;
+    payload.displayHeight = size.naturalHeight;
   } else {
     const lines = wrapText(payload.text, 28);
     size = {
@@ -155,8 +162,9 @@ function createEditorWindow(dataUrl) {
     throw new Error("截图图片为空");
   }
   const size = getPinSize(imageSize);
-  const width = Math.max(520, size.width);
-  const height = Math.max(360, size.height + 92);
+  const toolbarHeight = 72;
+  const width = Math.max(260, size.width);
+  const height = Math.max(180, size.height + toolbarHeight);
   const { x, y } = getWindowPosition(width, height);
   const win = window.utools.createBrowserWindow(
     "index.html",
@@ -170,10 +178,11 @@ function createEditorWindow(dataUrl) {
       minHeight: 240,
       useContentSize: true,
       frame: false,
-      transparent: false,
-      backgroundColor: "#111827",
+      transparent: true,
+      backgroundColor: "#00000000",
       hasShadow: true,
       resizable: true,
+      skipTaskbar: true,
       autoHideMenuBar: true,
       webPreferences: {
         preload: "preload.js"
@@ -181,7 +190,12 @@ function createEditorWindow(dataUrl) {
     },
     () => {
       childWindows.set(win.webContents.id, win);
-      win.webContents.send("editor:init", { dataUrl });
+      win.webContents.send("editor:init", {
+        dataUrl,
+        displayWidth: size.width,
+        displayHeight: size.height
+      });
+      win.setAlwaysOnTop(true, "screen-saver");
       win.show();
       win.focus();
     }

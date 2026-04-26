@@ -2,12 +2,12 @@
   color-scheme: dark;
   --text: #f8fafc;
   --muted: #9aa4b2;
-  --panel: rgba(20, 24, 33, 0.88);
-  --panel-strong: rgba(12, 15, 21, 0.94);
-  --line: rgba(255, 255, 255, 0.14);
+  --panel: rgba(20, 24, 33, 0.9);
+  --panel-strong: rgba(12, 15, 21, 0.96);
+  --line: rgba(255, 255, 255, 0.16);
   --accent: #2f7dff;
   --danger: #ff4d4f;
-  --shadow: 0 14px 36px rgba(0, 0, 0, 0.36);
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.34);
 }
 
 * {
@@ -19,11 +19,12 @@ body {
   width: 100%;
   height: 100%;
   margin: 0;
+  overflow: hidden;
 }
 
 body {
   color: var(--text);
-  background: #111827;
+  background: transparent;
   font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -34,36 +35,31 @@ input {
 
 .app {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) 0;
+  width: 100vw;
   height: 100vh;
-  background:
-    linear-gradient(45deg, #1f2937 25%, transparent 25%),
-    linear-gradient(-45deg, #1f2937 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #1f2937 75%),
-    linear-gradient(-45deg, transparent 75%, #1f2937 75%),
-    #111827;
-  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
-  background-size: 20px 20px;
+  background: transparent;
 }
 
 .stage {
   position: relative;
   display: grid;
-  place-items: center;
+  place-items: start center;
+  min-width: 0;
   min-height: 0;
-  overflow: auto;
-  padding: 18px 18px 92px;
+  overflow: hidden;
+  padding: 0 0 72px;
 }
 
 .stage.dragging {
-  outline: 3px solid rgba(47, 125, 255, 0.42);
-  outline-offset: -8px;
+  outline: 2px solid rgba(47, 125, 255, 0.42);
+  outline-offset: -4px;
 }
 
 canvas {
   display: block;
-  max-width: calc(100vw - 36px);
-  max-height: calc(100vh - 128px);
+  max-width: none;
+  max-height: none;
   box-shadow: var(--shadow);
   background: #fff;
   cursor: crosshair;
@@ -76,17 +72,16 @@ canvas.hidden {
 .toolbar {
   position: absolute;
   left: 50%;
-  bottom: 18px;
+  bottom: 8px;
   z-index: 5;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   justify-content: center;
-  gap: 7px;
-  max-width: calc(100vw - 24px);
+  gap: 6px;
+  max-width: calc(100vw - 16px);
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 7px;
+  padding: 6px;
   background: var(--panel);
   box-shadow: var(--shadow);
   backdrop-filter: blur(14px);
@@ -96,20 +91,20 @@ canvas.hidden {
 .tool-row {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .segmented {
   border-left: 1px solid var(--line);
   border-right: 1px solid var(--line);
-  padding: 0 7px;
+  padding: 0 6px;
 }
 
 .icon-btn {
   display: inline-grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border: 1px solid transparent;
   border-radius: 6px;
   padding: 0;
@@ -118,6 +113,16 @@ canvas.hidden {
   cursor: pointer;
   line-height: 1;
   transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.icon-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .icon-btn:hover:not(:disabled) {
@@ -144,12 +149,12 @@ canvas.hidden {
 .control {
   display: inline-flex;
   align-items: center;
-  height: 32px;
+  height: 30px;
 }
 
 .color-control input {
-  width: 31px;
-  height: 31px;
+  width: 30px;
+  height: 30px;
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 2px;
@@ -157,7 +162,7 @@ canvas.hidden {
 }
 
 .width-control {
-  width: 80px;
+  width: 74px;
 }
 
 .width-control input {
@@ -175,6 +180,14 @@ canvas.hidden {
   pointer-events: none;
   color: var(--muted);
   text-align: center;
+  background:
+    linear-gradient(45deg, #1f2937 25%, transparent 25%),
+    linear-gradient(-45deg, #1f2937 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #1f2937 75%),
+    linear-gradient(-45deg, transparent 75%, #1f2937 75%),
+    #111827;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  background-size: 20px 20px;
 }
 
 .empty.hidden {
@@ -183,7 +196,7 @@ canvas.hidden {
 
 .empty h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--text);
 }
@@ -193,24 +206,11 @@ canvas.hidden {
 }
 
 .status {
-  min-height: 24px;
-  padding: 3px 10px 6px;
-  color: var(--muted);
-  background: rgba(12, 15, 21, 0.92);
-  font-size: 12px;
+  display: none;
 }
 
 @media (max-width: 760px) {
-  .stage {
-    padding: 12px 12px 132px;
-  }
-
-  canvas {
-    max-width: calc(100vw - 24px);
-    max-height: calc(100vh - 160px);
-  }
-
   .toolbar {
-    bottom: 32px;
+    flex-wrap: wrap;
   }
 }

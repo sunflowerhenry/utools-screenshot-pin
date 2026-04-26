@@ -16,7 +16,7 @@
     },
     {
       "code": "capture-pin",
-      "explain": "截图并贴图悬浮",
+      "explain": "剪贴板贴图悬浮",
       "cmds": [
         "贴图"
       ]
