@@ -43,12 +43,11 @@ input {
 
 .stage {
   position: relative;
-  display: grid;
-  place-items: start center;
+  display: block;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  padding: 0 0 58px;
+  padding: 0;
 }
 
 .stage.dragging {
@@ -57,6 +56,9 @@ input {
 }
 
 canvas {
+  position: absolute;
+  left: var(--image-left, 0px);
+  top: var(--image-top, 0px);
   display: block;
   max-width: none;
   max-height: none;
@@ -77,8 +79,8 @@ canvas.hidden {
 
 .toolbar {
   position: absolute;
-  left: 50%;
-  bottom: 0;
+  left: var(--toolbar-left, 0px);
+  top: var(--toolbar-top, var(--image-height, 0px));
   z-index: 5;
   display: flex;
   align-items: center;
@@ -91,7 +93,6 @@ canvas.hidden {
   background: var(--panel);
   box-shadow: var(--shadow);
   backdrop-filter: blur(14px);
-  transform: translateX(-50%);
   -webkit-app-region: no-drag;
 }
 

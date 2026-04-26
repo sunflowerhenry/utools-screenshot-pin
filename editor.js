@@ -28,6 +28,9 @@ const state = {
   baseDisplayHeight: 0,
   displayWidth: 0,
   displayHeight: 0,
+  imageOffsetX: 0,
+  imageOffsetY: 0,
+  toolbarOffsetX: 0,
   zoom: 1,
   annotations: [],
   tool: "move",
@@ -68,6 +71,11 @@ function getToolbarHeight() {
   return Math.ceil((toolbar && toolbar.getBoundingClientRect().height) || 58);
 }
 
+function getToolbarWidth() {
+  const toolbar = document.querySelector(".toolbar");
+  return Math.ceil((toolbar && toolbar.getBoundingClientRect().width) || 430);
+}
+
 function updateZoomLabel() {
   if (zoomLabel) {
     zoomLabel.textContent = `${Math.round(state.zoom * 100)}%`;
@@ -83,14 +91,30 @@ function updatePixelLabel() {
 function applyDisplaySize() {
   state.displayWidth = Math.max(1, Math.round(state.baseDisplayWidth * state.zoom));
   state.displayHeight = Math.max(1, Math.round(state.baseDisplayHeight * state.zoom));
+  const toolbarHeight = getToolbarHeight();
+  const toolbarWidth = getToolbarWidth();
+  const toolbarTop = state.imageOffsetY + state.displayHeight;
   canvas.style.width = `${state.displayWidth}px`;
   canvas.style.height = `${state.displayHeight}px`;
+  document.documentElement.style.setProperty("--image-left", `${state.imageOffsetX}px`);
+  document.documentElement.style.setProperty("--image-top", `${state.imageOffsetY}px`);
+  document.documentElement.style.setProperty("--image-height", `${state.displayHeight}px`);
+  document.documentElement.style.setProperty("--toolbar-left", `${state.toolbarOffsetX}px`);
+  document.documentElement.style.setProperty("--toolbar-top", `${toolbarTop}px`);
   updateZoomLabel();
 
   if (api.resizeEditor) {
     api.resizeEditor({
-      width: Math.max(430, state.displayWidth),
-      height: state.displayHeight + getToolbarHeight()
+      width: Math.max(
+        120,
+        state.imageOffsetX + state.displayWidth,
+        state.toolbarOffsetX + toolbarWidth
+      ),
+      height: Math.max(
+        80,
+        state.imageOffsetY + state.displayHeight,
+        toolbarTop + toolbarHeight
+      )
     });
   }
 }
@@ -131,6 +155,13 @@ async function setImage(dataUrl, message, displaySize = {}) {
   state.zoom = 1;
   canvas.width = image.naturalWidth || image.width;
   canvas.height = image.naturalHeight || image.height;
+  state.imageOffsetX = Math.max(0, Math.round(Number(displaySize.imageOffsetX) || 0));
+  state.imageOffsetY = Math.max(0, Math.round(Number(displaySize.imageOffsetY) || 0));
+  const toolbarOffsetX = Number(displaySize.toolbarOffsetX);
+  state.toolbarOffsetX = Math.max(
+    0,
+    Math.round(Number.isFinite(toolbarOffsetX) ? toolbarOffsetX : state.imageOffsetX)
+  );
   updatePixelLabel();
   const defaultDisplaySize = getDefaultDisplaySize(displaySize);
   state.baseDisplayWidth = defaultDisplaySize.width;
@@ -683,7 +714,10 @@ window.addEventListener("editor:init", async (event) => {
   try {
     await setImage(event.detail.dataUrl, "截图完成，可以开始标记", {
       width: event.detail.displayWidth,
-      height: event.detail.displayHeight
+      height: event.detail.displayHeight,
+      imageOffsetX: event.detail.imageOffsetX,
+      imageOffsetY: event.detail.imageOffsetY,
+      toolbarOffsetX: event.detail.toolbarOffsetX
     });
   } catch (error) {
     setStatus(error.message || "载入截图失败");

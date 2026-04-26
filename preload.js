@@ -72,6 +72,11 @@ function getDipSize(imageSize, display) {
   };
 }
 
+function clampNumber(value, min, max) {
+  if (max < min) return min;
+  return Math.min(max, Math.max(min, value));
+}
+
 function getWindowPosition(width, height) {
   const point = window.utools.getCursorScreenPoint();
   const display = window.utools.getDisplayNearestPoint(point);
@@ -214,7 +219,11 @@ function createEditorWindow(dataUrl, options = {}) {
   if (image.isEmpty() || !imageSize.width || !imageSize.height) {
     throw new Error("截图图片为空");
   }
-  const display = getCurrentDisplay();
+  const hasSelectionPosition = options.windowX !== undefined && options.windowY !== undefined;
+  const selectionDisplay = hasSelectionPosition && window.utools && window.utools.getDisplayNearestPoint
+    ? window.utools.getDisplayNearestPoint({ x: options.windowX, y: options.windowY })
+    : null;
+  const display = selectionDisplay || getCurrentDisplay();
   const bounds = display.workArea || display.bounds || { width: 1200, height: 800 };
   const actualSize = options.displayWidth && options.displayHeight
     ? { width: options.displayWidth, height: options.displayHeight }
@@ -225,14 +234,37 @@ function createEditorWindow(dataUrl, options = {}) {
   const scale = Math.min(1, maxWidth / actualSize.width, maxImageHeight / actualSize.height);
   const displayWidth = Math.max(1, Math.round(actualSize.width * scale));
   const displayHeight = Math.max(1, Math.round(actualSize.height * scale));
-  const toolbarWidth = 430;
-  const width = Math.max(toolbarWidth, displayWidth);
-  const height = displayHeight + toolbarHeight;
-  const position = options.windowX !== undefined && options.windowY !== undefined
-    ? { x: options.windowX, y: options.windowY }
-    : getEditorWindowPosition(width, height);
-  const x = Math.min(Math.max(bounds.x || 0, position.x), (bounds.x || 0) + bounds.width - width);
-  const y = Math.min(Math.max(bounds.y || 0, position.y), (bounds.y || 0) + bounds.height - height);
+  const toolbarWidth = 820;
+  let imageOffsetX = 0;
+  let imageOffsetY = 0;
+  let toolbarOffsetX = 0;
+  let width = Math.max(toolbarWidth, displayWidth);
+  let height = displayHeight + toolbarHeight;
+  let position;
+
+  if (hasSelectionPosition) {
+    const desiredImageX = Math.round(options.windowX);
+    const desiredImageY = Math.round(options.windowY);
+    const screenLeft = bounds.x || 0;
+    const screenRight = screenLeft + bounds.width;
+    const toolbarRightLimit = Math.max(screenLeft, screenRight - Math.min(toolbarWidth, bounds.width));
+    const toolbarX = clampNumber(desiredImageX, screenLeft, toolbarRightLimit);
+    const x = Math.min(desiredImageX, toolbarX);
+
+    imageOffsetX = Math.max(0, desiredImageX - x);
+    toolbarOffsetX = Math.max(0, toolbarX - x);
+    width = Math.max(
+      120,
+      imageOffsetX + displayWidth,
+      toolbarOffsetX + toolbarWidth
+    );
+    position = { x, y: desiredImageY };
+  } else {
+    position = getEditorWindowPosition(width, height);
+  }
+
+  const x = position.x;
+  const y = position.y;
   const win = window.utools.createBrowserWindow(
     "editor.html",
     {
@@ -265,11 +297,17 @@ function createEditorWindow(dataUrl, options = {}) {
         dataUrl,
         displayWidth,
         displayHeight,
+        imageOffsetX,
+        imageOffsetY,
+        toolbarOffsetX,
         pixelWidth: imageSize.width,
         pixelHeight: imageSize.height
       });
       try {
         win.setBackgroundColor("#00000000");
+      } catch (error) {}
+      try {
+        win.setPosition(x, y);
       } catch (error) {}
       win.setAlwaysOnTop(true, "screen-saver");
       win.show();
