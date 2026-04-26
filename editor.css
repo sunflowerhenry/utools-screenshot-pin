@@ -62,6 +62,10 @@ canvas {
   max-height: none;
   box-shadow: var(--shadow);
   background: #fff;
+  cursor: grab;
+}
+
+canvas.drawing {
   cursor: crosshair;
 }
 

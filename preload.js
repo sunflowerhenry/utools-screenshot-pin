@@ -202,13 +202,16 @@ function createEditorWindow(dataUrl) {
   const point = window.utools.getCursorScreenPoint();
   const display = window.utools.getDisplayNearestPoint(point);
   const bounds = display.workArea || display.bounds || { width: 1200, height: 800 };
-  const dipSize = getDipSize(imageSize, display);
+  const actualSize = {
+    width: imageSize.width,
+    height: imageSize.height
+  };
   const toolbarHeight = 58;
   const maxWidth = Math.max(260, bounds.width - 16);
   const maxImageHeight = Math.max(160, bounds.height - toolbarHeight - 16);
-  const scale = Math.min(1, maxWidth / dipSize.width, maxImageHeight / dipSize.height);
-  const displayWidth = Math.max(120, Math.round(dipSize.width * scale));
-  const displayHeight = Math.max(80, Math.round(dipSize.height * scale));
+  const scale = Math.min(1, maxWidth / actualSize.width, maxImageHeight / actualSize.height);
+  const displayWidth = Math.max(120, Math.round(actualSize.width * scale));
+  const displayHeight = Math.max(80, Math.round(actualSize.height * scale));
   const width = Math.max(430, displayWidth);
   const height = displayHeight + toolbarHeight;
   const { x, y } = getEditorWindowPosition(width, height);

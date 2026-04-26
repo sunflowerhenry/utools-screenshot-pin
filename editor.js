@@ -22,7 +22,7 @@ const state = {
   displayWidth: 0,
   displayHeight: 0,
   annotations: [],
-  tool: "pen",
+  tool: "move",
   color: colorInput.value,
   size: Number(sizeInput.value),
   drawing: false,
@@ -40,6 +40,7 @@ function setTool(tool) {
   toolButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.tool === tool);
   });
+  canvas.classList.toggle("drawing", tool !== "move");
 }
 
 function updateButtons() {
@@ -410,6 +411,7 @@ sizeInput.addEventListener("input", () => {
 
 canvas.addEventListener("pointerdown", (event) => {
   if (!state.image) return;
+  if (state.tool === "move") return;
   const point = getPointer(event);
 
   if (state.tool === "text") {
