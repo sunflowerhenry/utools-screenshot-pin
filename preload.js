@@ -210,9 +210,10 @@ function createEditorWindow(dataUrl) {
   const maxWidth = Math.max(260, bounds.width - 16);
   const maxImageHeight = Math.max(160, bounds.height - toolbarHeight - 16);
   const scale = Math.min(1, maxWidth / actualSize.width, maxImageHeight / actualSize.height);
-  const displayWidth = Math.max(120, Math.round(actualSize.width * scale));
-  const displayHeight = Math.max(80, Math.round(actualSize.height * scale));
-  const width = Math.max(430, displayWidth);
+  const displayWidth = Math.max(1, Math.round(actualSize.width * scale));
+  const displayHeight = Math.max(1, Math.round(actualSize.height * scale));
+  const toolbarWidth = 430;
+  const width = Math.max(toolbarWidth, displayWidth);
   const height = displayHeight + toolbarHeight;
   const { x, y } = getEditorWindowPosition(width, height);
   const win = window.utools.createBrowserWindow(

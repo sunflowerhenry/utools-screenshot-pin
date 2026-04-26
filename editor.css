@@ -63,10 +63,12 @@ canvas {
   box-shadow: var(--shadow);
   background: #fff;
   cursor: grab;
+  -webkit-app-region: drag;
 }
 
 canvas.drawing {
   cursor: crosshair;
+  -webkit-app-region: no-drag;
 }
 
 canvas.hidden {
@@ -90,6 +92,7 @@ canvas.hidden {
   box-shadow: var(--shadow);
   backdrop-filter: blur(14px);
   transform: translateX(-50%);
+  -webkit-app-region: no-drag;
 }
 
 .tool-row {
