@@ -31,9 +31,9 @@ function getPinSize(imageSize) {
   const point = window.utools.getCursorScreenPoint();
   const display = window.utools.getDisplayNearestPoint(point);
   const bounds = display.workArea || display.bounds || { width: 1200, height: 800 };
-  const scaleFactor = display.scaleFactor || 1;
-  const naturalWidth = Math.max(1, imageSize.width / scaleFactor);
-  const naturalHeight = Math.max(1, imageSize.height / scaleFactor);
+  const dipSize = getDipSize(imageSize, display);
+  const naturalWidth = dipSize.width;
+  const naturalHeight = dipSize.height;
   const maxWidth = Math.max(240, Math.floor(bounds.width * 0.72));
   const maxHeight = Math.max(160, Math.floor(bounds.height * 0.72));
   const scale = Math.min(1, maxWidth / naturalWidth, maxHeight / naturalHeight);
@@ -49,6 +49,29 @@ function getPinSize(imageSize) {
   };
 }
 
+function getDipSize(imageSize, display) {
+  if (window.utools && window.utools.screenToDipRect) {
+    const rect = window.utools.screenToDipRect({
+      x: 0,
+      y: 0,
+      width: imageSize.width,
+      height: imageSize.height
+    });
+    if (rect && rect.width && rect.height) {
+      return {
+        width: Math.round(rect.width),
+        height: Math.round(rect.height)
+      };
+    }
+  }
+
+  const scaleFactor = display && display.scaleFactor ? display.scaleFactor : 1;
+  return {
+    width: Math.round(imageSize.width / scaleFactor),
+    height: Math.round(imageSize.height / scaleFactor)
+  };
+}
+
 function getWindowPosition(width, height) {
   const point = window.utools.getCursorScreenPoint();
   const display = window.utools.getDisplayNearestPoint(point);
@@ -59,6 +82,21 @@ function getWindowPosition(width, height) {
   );
   const y = Math.min(
     Math.max(bounds.y || 0, point.y - Math.floor(height / 2)),
+    (bounds.y || 0) + bounds.height - height
+  );
+  return { x, y, bounds };
+}
+
+function getEditorWindowPosition(width, height) {
+  const point = window.utools.getCursorScreenPoint();
+  const display = window.utools.getDisplayNearestPoint(point);
+  const bounds = display.workArea || display.bounds || { x: 0, y: 0, width: 1200, height: 800 };
+  const x = Math.min(
+    Math.max(bounds.x || 0, point.x - width),
+    (bounds.x || 0) + bounds.width - width
+  );
+  const y = Math.min(
+    Math.max(bounds.y || 0, point.y - height),
     (bounds.y || 0) + bounds.height - height
   );
   return { x, y, bounds };
@@ -161,11 +199,19 @@ function createEditorWindow(dataUrl) {
   if (image.isEmpty() || !imageSize.width || !imageSize.height) {
     throw new Error("截图图片为空");
   }
-  const size = getPinSize(imageSize);
-  const toolbarHeight = 72;
-  const width = Math.max(260, size.width);
-  const height = Math.max(180, size.height + toolbarHeight);
-  const { x, y } = getWindowPosition(width, height);
+  const point = window.utools.getCursorScreenPoint();
+  const display = window.utools.getDisplayNearestPoint(point);
+  const bounds = display.workArea || display.bounds || { width: 1200, height: 800 };
+  const dipSize = getDipSize(imageSize, display);
+  const toolbarHeight = 58;
+  const maxWidth = Math.max(260, bounds.width - 16);
+  const maxImageHeight = Math.max(160, bounds.height - toolbarHeight - 16);
+  const scale = Math.min(1, maxWidth / dipSize.width, maxImageHeight / dipSize.height);
+  const displayWidth = Math.max(120, Math.round(dipSize.width * scale));
+  const displayHeight = Math.max(80, Math.round(dipSize.height * scale));
+  const width = displayWidth;
+  const height = displayHeight + toolbarHeight;
+  const { x, y } = getEditorWindowPosition(width, height);
   const win = window.utools.createBrowserWindow(
     "index.html",
     {
@@ -174,15 +220,19 @@ function createEditorWindow(dataUrl) {
       y,
       width,
       height,
-      minWidth: 360,
-      minHeight: 240,
+      minWidth: 120,
+      minHeight: 80,
       useContentSize: true,
       frame: false,
+      thickFrame: false,
       transparent: true,
       backgroundColor: "#00000000",
-      hasShadow: true,
+      roundedCorners: false,
+      hasShadow: false,
       resizable: true,
       skipTaskbar: true,
+      closeable: true,
+      enableLargerThanScreen: true,
       autoHideMenuBar: true,
       webPreferences: {
         preload: "preload.js"
@@ -192,9 +242,12 @@ function createEditorWindow(dataUrl) {
       childWindows.set(win.webContents.id, win);
       win.webContents.send("editor:init", {
         dataUrl,
-        displayWidth: size.width,
-        displayHeight: size.height
+        displayWidth,
+        displayHeight
       });
+      try {
+        win.setBackgroundColor("#00000000");
+      } catch (error) {}
       win.setAlwaysOnTop(true, "screen-saver");
       win.show();
       win.focus();

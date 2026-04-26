@@ -48,7 +48,7 @@ input {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  padding: 0 0 72px;
+  padding: 0 0 58px;
 }
 
 .stage.dragging {
@@ -72,16 +72,16 @@ canvas.hidden {
 .toolbar {
   position: absolute;
   left: 50%;
-  bottom: 8px;
+  bottom: 0;
   z-index: 5;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  max-width: calc(100vw - 16px);
+  gap: 5px;
+  max-width: 100vw;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 6px;
+  border-radius: 7px;
+  padding: 5px;
   background: var(--panel);
   box-shadow: var(--shadow);
   backdrop-filter: blur(14px);
@@ -103,8 +103,8 @@ canvas.hidden {
 .icon-btn {
   display: inline-grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border: 1px solid transparent;
   border-radius: 6px;
   padding: 0;
@@ -116,8 +116,8 @@ canvas.hidden {
 }
 
 .icon-btn svg {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -149,12 +149,12 @@ canvas.hidden {
 .control {
   display: inline-flex;
   align-items: center;
-  height: 30px;
+  height: 28px;
 }
 
 .color-control input {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 2px;
@@ -162,7 +162,7 @@ canvas.hidden {
 }
 
 .width-control {
-  width: 74px;
+  width: 64px;
 }
 
 .width-control input {
