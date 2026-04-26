@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>截图标记</title>
+    <link rel="stylesheet" href="index.css">
+  </head>
+  <body>
+    <main class="app">
+      <section class="stage" id="dropZone">
+        <canvas id="canvas" width="1200" height="720"></canvas>
+        <div class="empty" id="emptyState">
+          <h1>截图标记</h1>
+          <p>点击截图开始，或拖入图片进行标记。</p>
+        </div>
+        <header class="toolbar" aria-label="截图编辑工具栏">
+          <section class="tool-row">
+            <button class="primary icon-btn" id="captureBtn" type="button" title="截图">⛶</button>
+            <button class="icon-btn" id="openBtn" type="button" title="打开图片">▣</button>
+            <input id="fileInput" type="file" accept="image/*" hidden>
+          </section>
+
+          <section class="tool-row segmented" aria-label="标记工具">
+            <button class="tool icon-btn active" data-tool="pen" type="button" title="画笔">✎</button>
+            <button class="tool icon-btn" data-tool="line" type="button" title="直线">╱</button>
+            <button class="tool icon-btn" data-tool="arrow" type="button" title="箭头">↗</button>
+            <button class="tool icon-btn" data-tool="rect" type="button" title="矩形">□</button>
+            <button class="tool icon-btn" data-tool="ellipse" type="button" title="圆形">○</button>
+            <button class="tool icon-btn" data-tool="mosaic" type="button" title="打码">▦</button>
+            <button class="tool icon-btn" data-tool="number" type="button" title="数字标注">①</button>
+            <button class="tool icon-btn" data-tool="text" type="button" title="文字">T</button>
+          </section>
+
+          <section class="tool-row">
+            <label class="control color-control" title="颜色">
+              <input id="colorInput" type="color" value="#ff3b30">
+            </label>
+            <label class="control width-control" title="线宽">
+              <input id="sizeInput" type="range" min="2" max="22" value="5">
+            </label>
+          </section>
+
+          <section class="tool-row">
+            <button class="icon-btn" id="undoBtn" type="button" title="撤销" disabled>↶</button>
+            <button class="icon-btn" id="clearBtn" type="button" title="清空标记" disabled>⌫</button>
+            <button class="icon-btn" id="pinBtn" type="button" title="贴图" disabled>⌖</button>
+            <button class="icon-btn" id="copyBtn" type="button" title="复制" disabled>⧉</button>
+            <button class="icon-btn" id="saveBtn" type="button" title="保存" disabled>⇩</button>
+          </section>
+        </header>
+      </section>
+
+      <footer class="status" id="status">准备就绪</footer>
+    </main>
+
+    <script src="index.js"></script>
+  </body>
+</html>

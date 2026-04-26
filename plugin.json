@@ -1,0 +1,32 @@
+{
+  "main": "index.html",
+  "logo": "logo.png",
+  "preload": "preload.js",
+  "pluginSetting": {
+    "height": 720,
+    "single": true
+  },
+  "features": [
+    {
+      "code": "capture-mark",
+      "explain": "截图并编辑",
+      "cmds": [
+        "截图"
+      ]
+    },
+    {
+      "code": "capture-pin",
+      "explain": "截图并贴图悬浮",
+      "cmds": [
+        "贴图"
+      ]
+    },
+    {
+      "code": "capture-settings",
+      "explain": "截图工具设置",
+      "cmds": [
+        "截图工具设置"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贴图</title>
+    <link rel="stylesheet" href="pin.css">
+  </head>
+  <body>
+    <main class="pin">
+      <img id="pinImage" alt="贴图">
+      <div class="toolbar">
+        <div class="drag-area" title="拖动贴图"></div>
+        <label class="opacity" title="透明度">
+          <span>透明</span>
+          <input id="opacityInput" type="range" min="30" max="100" value="100">
+        </label>
+        <button id="copyBtn" type="button" title="复制图片">复制</button>
+        <button id="closeBtn" type="button" title="关闭贴图">关闭</button>
+      </div>
+      <div id="resizeHandle" class="resize-handle" title="缩放贴图"></div>
+    </main>
+
+    <script src="pin.js"></script>
+  </body>
+</html>
