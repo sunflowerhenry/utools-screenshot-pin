@@ -9,9 +9,8 @@ function setStatus(message) {
 
 async function captureToEditor() {
   try {
-    setStatus("正在截图...");
-    const dataUrl = await api.captureScreen({ restoreMainWindow: false });
-    api.openEditor(dataUrl);
+    setStatus("正在打开截图选择层...");
+    await api.openSelection();
     if (window.utools) {
       window.utools.outPlugin();
     }

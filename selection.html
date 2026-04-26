@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>选择截图区域</title>
+    <link rel="stylesheet" href="selection.css">
+  </head>
+  <body>
+    <main id="surface" class="surface">
+      <img id="screenImage" alt="屏幕">
+      <div id="shade" class="shade"></div>
+      <section id="selection" class="selection hidden">
+        <span class="handle nw" data-handle="nw"></span>
+        <span class="handle n" data-handle="n"></span>
+        <span class="handle ne" data-handle="ne"></span>
+        <span class="handle e" data-handle="e"></span>
+        <span class="handle se" data-handle="se"></span>
+        <span class="handle s" data-handle="s"></span>
+        <span class="handle sw" data-handle="sw"></span>
+        <span class="handle w" data-handle="w"></span>
+      </section>
+      <div id="sizeLabel" class="size-label hidden">0 x 0</div>
+      <div id="actions" class="actions hidden">
+        <button id="confirmBtn" type="button">完成</button>
+        <button id="cancelBtn" type="button">取消</button>
+      </div>
+    </main>
+
+    <script src="selection.js"></script>
+  </body>
+</html>

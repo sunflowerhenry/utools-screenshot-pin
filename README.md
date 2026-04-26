@@ -5,6 +5,7 @@
 ## 功能
 
 - 截图后编辑：画笔、直线、箭头、矩形、圆形、打码、数字标注、文字。
+- 自建截图选择层：拖选区域、调整选区、实时显示像素尺寸。
 - 贴图：直接读取剪贴板图片或文本悬浮，也可在编辑后点击贴图按钮悬浮。
 - 贴图窗口：置顶、拖动、缩放、透明度调节、复制、关闭。
 - 关键词精简：`截图`、`贴图`、`截图工具设置`。
@@ -21,6 +22,7 @@
 - `plugin.json`：uTools 插件配置。
 - `launcher.html` / `launcher.css` / `launcher.js`：uTools 小入口窗口。
 - `index.html`：兼容入口，避免旧配置继续打开编辑主面板。
+- `selection.html` / `selection.css` / `selection.js` / `selection-preload.js`：自建截图选择层。
 - `editor.html` / `editor.css` / `editor.js`：独立截图编辑窗口。
 - `preload.js`：截图、保存、复制、剪贴板贴图、窗口创建等 uTools/Electron 能力。
 - `pin.html` / `pin.css` / `pin.js` / `pin-preload.js`：贴图悬浮窗口。

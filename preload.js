@@ -1,6 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { clipboard, ipcRenderer, nativeImage } = require("electron");
+const { clipboard, desktopCapturer, ipcRenderer, nativeImage } = require("electron");
 
 const childWindows = new Map();
 
@@ -85,6 +85,21 @@ function getWindowPosition(width, height) {
     (bounds.y || 0) + bounds.height - height
   );
   return { x, y, bounds };
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getCurrentDisplay() {
+  const point = window.utools.getCursorScreenPoint();
+  const display = window.utools.getDisplayNearestPoint(point);
+  return display || {
+    id: "primary",
+    bounds: { x: 0, y: 0, width: 1200, height: 800 },
+    workArea: { x: 0, y: 0, width: 1200, height: 800 },
+    scaleFactor: 1
+  };
 }
 
 function getEditorWindowPosition(width, height) {
@@ -190,7 +205,7 @@ function wrapText(text, maxLength) {
   return lines.length ? lines : ["空文本"];
 }
 
-function createEditorWindow(dataUrl) {
+function createEditorWindow(dataUrl, options = {}) {
   if (!window.utools || !window.utools.createBrowserWindow) {
     throw new Error("当前环境没有 uTools 独立窗口 API");
   }
@@ -199,13 +214,11 @@ function createEditorWindow(dataUrl) {
   if (image.isEmpty() || !imageSize.width || !imageSize.height) {
     throw new Error("截图图片为空");
   }
-  const point = window.utools.getCursorScreenPoint();
-  const display = window.utools.getDisplayNearestPoint(point);
+  const display = getCurrentDisplay();
   const bounds = display.workArea || display.bounds || { width: 1200, height: 800 };
-  const actualSize = {
-    width: imageSize.width,
-    height: imageSize.height
-  };
+  const actualSize = options.displayWidth && options.displayHeight
+    ? { width: options.displayWidth, height: options.displayHeight }
+    : { width: imageSize.width, height: imageSize.height };
   const toolbarHeight = 58;
   const maxWidth = Math.max(260, bounds.width - 16);
   const maxImageHeight = Math.max(160, bounds.height - toolbarHeight - 16);
@@ -215,7 +228,11 @@ function createEditorWindow(dataUrl) {
   const toolbarWidth = 430;
   const width = Math.max(toolbarWidth, displayWidth);
   const height = displayHeight + toolbarHeight;
-  const { x, y } = getEditorWindowPosition(width, height);
+  const position = options.windowX !== undefined && options.windowY !== undefined
+    ? { x: options.windowX, y: options.windowY }
+    : getEditorWindowPosition(width, height);
+  const x = Math.min(Math.max(bounds.x || 0, position.x), (bounds.x || 0) + bounds.width - width);
+  const y = Math.min(Math.max(bounds.y || 0, position.y), (bounds.y || 0) + bounds.height - height);
   const win = window.utools.createBrowserWindow(
     "editor.html",
     {
@@ -247,11 +264,98 @@ function createEditorWindow(dataUrl) {
       win.webContents.send("editor:init", {
         dataUrl,
         displayWidth,
-        displayHeight
+        displayHeight,
+        pixelWidth: imageSize.width,
+        pixelHeight: imageSize.height
       });
       try {
         win.setBackgroundColor("#00000000");
       } catch (error) {}
+      win.setAlwaysOnTop(true, "screen-saver");
+      win.show();
+      win.focus();
+    }
+  );
+  return true;
+}
+
+async function captureCurrentDisplay() {
+  if (!desktopCapturer || !desktopCapturer.getSources) {
+    throw new Error("当前环境没有桌面截图能力");
+  }
+
+  const display = getCurrentDisplay();
+  const bounds = display.bounds || display.workArea || { x: 0, y: 0, width: 1200, height: 800 };
+  const scaleFactor = display.scaleFactor || 1;
+  const thumbnailSize = {
+    width: Math.max(1, Math.round(bounds.width * scaleFactor)),
+    height: Math.max(1, Math.round(bounds.height * scaleFactor))
+  };
+  const sources = await desktopCapturer.getSources({
+    types: ["screen"],
+    thumbnailSize
+  });
+  const source = sources.find((item) => String(item.display_id) === String(display.id)) || sources[0];
+  if (!source || source.thumbnail.isEmpty()) {
+    throw new Error("获取屏幕图像失败");
+  }
+  const imageSize = source.thumbnail.getSize();
+  return {
+    dataUrl: source.thumbnail.toDataURL(),
+    display,
+    bounds,
+    pixelWidth: imageSize.width,
+    pixelHeight: imageSize.height,
+    scaleX: imageSize.width / bounds.width,
+    scaleY: imageSize.height / bounds.height
+  };
+}
+
+async function openSelectionWindow() {
+  if (!window.utools || !window.utools.createBrowserWindow) {
+    throw new Error("当前环境没有 uTools 独立窗口 API");
+  }
+
+  window.utools.hideMainWindow(true);
+  await sleep(180);
+  const capture = await captureCurrentDisplay();
+  const bounds = capture.bounds;
+  const win = window.utools.createBrowserWindow(
+    "selection.html",
+    {
+      show: false,
+      x: bounds.x || 0,
+      y: bounds.y || 0,
+      width: bounds.width,
+      height: bounds.height,
+      useContentSize: true,
+      frame: false,
+      thickFrame: false,
+      transparent: false,
+      backgroundColor: "#000000",
+      hasShadow: false,
+      resizable: false,
+      movable: false,
+      minimizable: false,
+      maximizable: false,
+      skipTaskbar: true,
+      alwaysOnTop: true,
+      fullscreenable: false,
+      autoHideMenuBar: true,
+      webPreferences: {
+        preload: "selection-preload.js"
+      }
+    },
+    () => {
+      childWindows.set(win.webContents.id, win);
+      win.webContents.send("selection:init", {
+        dataUrl: capture.dataUrl,
+        pixelWidth: capture.pixelWidth,
+        pixelHeight: capture.pixelHeight,
+        bounds: capture.bounds,
+        scaleX: capture.scaleX,
+        scaleY: capture.scaleY
+      });
       win.setAlwaysOnTop(true, "screen-saver");
       win.show();
       win.focus();
@@ -290,6 +394,29 @@ ipcRenderer.on("pin:opacity", (event, payload) => {
 
 ipcRenderer.on("editor:init", (event, payload) => {
   window.dispatchEvent(new CustomEvent("editor:init", { detail: payload }));
+});
+
+ipcRenderer.on("selection:cancel", (event) => {
+  const win = getChildWindow(event);
+  if (win) {
+    childWindows.delete(event.senderId);
+    win.destroy();
+  }
+});
+
+ipcRenderer.on("selection:complete", (event, payload) => {
+  const data = typeof payload === "string" ? JSON.parse(payload) : payload;
+  const win = getChildWindow(event);
+  if (win) {
+    childWindows.delete(event.senderId);
+    win.destroy();
+  }
+  createEditorWindow(data.dataUrl, {
+    displayWidth: data.displayWidth,
+    displayHeight: data.displayHeight,
+    windowX: data.windowX,
+    windowY: data.windowY
+  });
 });
 
 window.screenshotMarker = {
@@ -374,8 +501,12 @@ window.screenshotMarker = {
     throw new Error("剪贴板中没有图片或文本");
   },
 
-  openEditor(dataUrl) {
+	  openEditor(dataUrl) {
     return createEditorWindow(dataUrl);
+  },
+
+  openSelection() {
+    return openSelectionWindow();
   },
 
   closeWindow() {

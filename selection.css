@@ -1,0 +1,109 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  cursor: crosshair;
+  user-select: none;
+}
+
+body {
+  background: #000;
+  font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.surface,
+#screenImage,
+.shade {
+  position: fixed;
+  inset: 0;
+}
+
+#screenImage {
+  width: 100vw;
+  height: 100vh;
+  object-fit: fill;
+  pointer-events: none;
+}
+
+.shade {
+  background: rgba(0, 0, 0, 0.38);
+  pointer-events: none;
+}
+
+.selection {
+  position: fixed;
+  border: 1px solid #2f7dff;
+  background: rgba(47, 125, 255, 0.08);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.34);
+  cursor: move;
+}
+
+.hidden {
+  display: none;
+}
+
+.handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  background: #2f7dff;
+}
+
+.nw { left: -5px; top: -5px; cursor: nwse-resize; }
+.n { left: 50%; top: -5px; margin-left: -5px; cursor: ns-resize; }
+.ne { right: -5px; top: -5px; cursor: nesw-resize; }
+.e { right: -5px; top: 50%; margin-top: -5px; cursor: ew-resize; }
+.se { right: -5px; bottom: -5px; cursor: nwse-resize; }
+.s { left: 50%; bottom: -5px; margin-left: -5px; cursor: ns-resize; }
+.sw { left: -5px; bottom: -5px; cursor: nesw-resize; }
+.w { left: -5px; top: 50%; margin-top: -5px; cursor: ew-resize; }
+
+.size-label,
+.actions {
+  position: fixed;
+  z-index: 3;
+  border-radius: 6px;
+  color: #fff;
+  background: rgba(16, 20, 28, 0.88);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(12px);
+}
+
+.size-label {
+  padding: 4px 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+}
+
+.actions button {
+  height: 28px;
+  border: 0;
+  border-radius: 5px;
+  padding: 0 12px;
+  color: #fff;
+  background: #2f7dff;
+  cursor: pointer;
+}
+
+.actions button + button {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.selection.hidden,
+.size-label.hidden,
+.actions.hidden {
+  display: none;
+}
