@@ -1,5 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 const { clipboard, desktopCapturer, ipcRenderer, nativeImage } = require("electron");
 
 const childWindows = new Map();
@@ -140,6 +141,10 @@ function sleep(ms) {
 
 function withCacheBust(file) {
   return `${file}?v=${Date.now()}`;
+}
+
+function pluginFileUrl(file) {
+  return `${pathToFileURL(path.join(__dirname, file)).toString()}?v=${Date.now()}`;
 }
 
 function getCurrentDisplay() {
@@ -380,6 +385,74 @@ function createEditorWindow(dataUrl, options = {}) {
   return true;
 }
 
+function getOverlayEditorPayload(data) {
+  const image = nativeImage.createFromDataURL(data.dataUrl);
+  const imageSize = image.getSize();
+  if (image.isEmpty() || !imageSize.width || !imageSize.height) {
+    throw new Error("截图图片为空");
+  }
+  const bounds = data.screenBounds || { x: 0, y: 0, width: data.displayWidth || 1200, height: data.displayHeight || 800 };
+  const cropRect = data.cropRect || { x: 0, y: 0, w: data.displayWidth || imageSize.width, h: data.displayHeight || imageSize.height };
+  const toolbarWidth = 1040;
+
+  return {
+    dataUrl: data.dataUrl,
+    sourceDataUrl: data.sourceDataUrl,
+    screenBounds: bounds,
+    cropRect,
+    sourcePixelWidth: data.sourcePixelWidth,
+    sourcePixelHeight: data.sourcePixelHeight,
+    overlayEditor: true,
+    displayWidth: Math.max(1, Math.round(data.displayWidth || cropRect.w || imageSize.width)),
+    displayHeight: Math.max(1, Math.round(data.displayHeight || cropRect.h || imageSize.height)),
+    imageOffsetX: Math.max(0, Math.round(cropRect.x || 0)),
+    imageOffsetY: Math.max(0, Math.round(cropRect.y || 0)),
+    toolbarOffsetX: clampNumber(
+      Math.max(0, Math.round(cropRect.x || 0)),
+      8,
+      Math.max(8, (bounds.width || 1200) - toolbarWidth - 8)
+    ),
+    pixelWidth: imageSize.width,
+    pixelHeight: imageSize.height
+  };
+}
+
+function loadEditorInExistingWindow(win, data) {
+  const payload = getOverlayEditorPayload(data);
+  const bounds = payload.screenBounds || { x: 0, y: 0, width: 1200, height: 800 };
+  const frame = {
+    x: Math.round(Number(bounds.x) || 0),
+    y: Math.round(Number(bounds.y) || 0),
+    width: Math.max(120, Math.round(Number(bounds.width) || 120)),
+    height: Math.max(80, Math.round(Number(bounds.height) || 80))
+  };
+
+  try {
+    win.setBounds(frame);
+  } catch (error) {
+    win.setPosition(frame.x, frame.y);
+    win.setSize(frame.width, frame.height);
+  }
+  try {
+    win.setBackgroundColor("#00000000");
+  } catch (error) {}
+  if (typeof win.setResizable === "function") {
+    win.setResizable(false);
+  }
+  if (typeof win.setMovable === "function") {
+    win.setMovable(false);
+  }
+
+  win.webContents.once("did-finish-load", () => {
+    childWindows.set(win.webContents.id, win);
+    win.webContents.send("editor:init", payload);
+    win.setAlwaysOnTop(true, "screen-saver");
+    win.show();
+    win.focus();
+  });
+  win.loadURL(pluginFileUrl("editor.html"));
+}
+
 async function captureCurrentDisplay() {
   if (!desktopCapturer || !desktopCapturer.getSources) {
     throw new Error("当前环境没有桌面截图能力");
@@ -432,8 +505,8 @@ async function openSelectionWindow() {
       useContentSize: true,
       frame: false,
       thickFrame: false,
-      transparent: false,
-      backgroundColor: "#000000",
+      transparent: true,
+      backgroundColor: "#00000000",
       hasShadow: false,
       resizable: false,
       movable: false,
@@ -444,7 +517,7 @@ async function openSelectionWindow() {
       fullscreenable: false,
       autoHideMenuBar: true,
       webPreferences: {
-        preload: "selection-preload.js"
+        preload: "preload.js"
       }
     },
     () => {
@@ -524,6 +597,10 @@ ipcRenderer.on("editor:init", (event, payload) => {
   window.dispatchEvent(new CustomEvent("editor:init", { detail: payload }));
 });
 
+ipcRenderer.on("selection:init", (event, payload) => {
+  window.dispatchEvent(new CustomEvent("selection:init", { detail: payload }));
+});
+
 ipcRenderer.on("selection:cancel", (event) => {
   const win = getChildWindow(event);
   if (win) {
@@ -536,8 +613,13 @@ ipcRenderer.on("selection:complete", (event, payload) => {
   const data = typeof payload === "string" ? JSON.parse(payload) : payload;
   const win = getChildWindow(event);
   if (win) {
-    childWindows.delete(event.senderId);
-    win.destroy();
+    try {
+      loadEditorInExistingWindow(win, data);
+      return;
+    } catch (error) {
+      childWindows.delete(event.senderId);
+      win.destroy();
+    }
   }
   createEditorWindow(data.dataUrl, {
     sourceDataUrl: data.sourceDataUrl,
@@ -553,6 +635,20 @@ ipcRenderer.on("selection:complete", (event, payload) => {
     windowY: data.windowY
   });
 });
+
+window.selectionWindow = {
+  complete(payload) {
+    if (window.utools && window.utools.sendToParent) {
+      window.utools.sendToParent("selection:complete", JSON.stringify(payload));
+    }
+  },
+
+  cancel() {
+    if (window.utools && window.utools.sendToParent) {
+      window.utools.sendToParent("selection:cancel");
+    }
+  }
+};
 
 window.screenshotMarker = {
   readImageFile(filePath) {

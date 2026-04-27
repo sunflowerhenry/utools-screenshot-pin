@@ -2,6 +2,7 @@ const surface = document.getElementById("surface");
 const screenImage = document.getElementById("screenImage");
 const selection = document.getElementById("selection");
 const guide = document.getElementById("guide");
+const shade = document.getElementById("shade");
 const sizeLabel = document.getElementById("sizeLabel");
 const actions = document.getElementById("actions");
 const confirmBtn = document.getElementById("confirmBtn");
@@ -45,6 +46,7 @@ function render() {
   if (!state.rect || state.rect.w < 1 || state.rect.h < 1) {
     selection.classList.add("hidden");
     guide.classList.remove("hidden");
+    shade.classList.remove("clear");
     sizeLabel.classList.add("hidden");
     actions.classList.add("hidden");
     return;
@@ -52,6 +54,7 @@ function render() {
 
   const rect = state.rect;
   guide.classList.add("hidden");
+  shade.classList.add("clear");
   selection.classList.remove("hidden");
   selection.style.left = `${rect.x}px`;
   selection.style.top = `${rect.y}px`;

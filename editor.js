@@ -68,7 +68,7 @@ function setTool(tool) {
   toolButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.tool === tool);
   });
-  canvas.classList.toggle("drawing", tool !== "move");
+  canvas.classList.toggle("drawing", tool !== "move" && tool !== "crop");
   updateCropOverlay();
 }
 
@@ -389,7 +389,7 @@ async function setImage(dataUrl, message, displaySize = {}) {
   state.baseDisplayHeight = defaultDisplaySize.height;
   applyDisplaySize();
   render();
-  setTool("move");
+  setTool(hasCropSource() ? "crop" : "move");
   updateButtons();
   setStatus(message || `已载入图片 ${canvas.width} x ${canvas.height}`);
 }

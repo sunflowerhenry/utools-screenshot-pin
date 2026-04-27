@@ -36,6 +36,10 @@ body {
   pointer-events: none;
 }
 
+.shade.clear {
+  background: transparent;
+}
+
 .guide {
   position: fixed;
   left: 50%;
