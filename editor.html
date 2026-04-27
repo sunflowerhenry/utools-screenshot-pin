@@ -10,6 +10,16 @@
     <main class="app">
       <section class="stage" id="dropZone">
         <canvas id="canvas" width="1200" height="720"></canvas>
+        <div id="cropOverlay" class="crop-overlay hidden" aria-hidden="true">
+          <span class="crop-handle nw" data-crop-handle="nw"></span>
+          <span class="crop-handle n" data-crop-handle="n"></span>
+          <span class="crop-handle ne" data-crop-handle="ne"></span>
+          <span class="crop-handle e" data-crop-handle="e"></span>
+          <span class="crop-handle se" data-crop-handle="se"></span>
+          <span class="crop-handle s" data-crop-handle="s"></span>
+          <span class="crop-handle sw" data-crop-handle="sw"></span>
+          <span class="crop-handle w" data-crop-handle="w"></span>
+        </div>
         <div class="empty" id="emptyState">
           <h1>截图标记</h1>
           <p>点击截图开始，或拖入图片进行标记。</p>
@@ -17,6 +27,7 @@
         <header class="toolbar" aria-label="截图编辑工具栏">
           <section class="tool-row segmented" aria-label="标记工具">
             <button class="tool icon-btn active" data-tool="move" type="button" title="拖动">✥</button>
+            <button class="tool icon-btn" data-tool="crop" type="button" title="调整选区">▣</button>
             <button class="tool icon-btn" data-tool="pen" type="button" title="画笔">✎</button>
             <button class="tool icon-btn" data-tool="line" type="button" title="直线">╱</button>
             <button class="tool icon-btn" data-tool="arrow" type="button" title="箭头">↗</button>

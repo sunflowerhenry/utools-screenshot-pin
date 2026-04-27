@@ -177,6 +177,16 @@ function cropSelection() {
     ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
     window.selectionWindow.complete({
       dataUrl: canvas.toDataURL("image/png"),
+      sourceDataUrl: state.dataUrl,
+      screenBounds: state.bounds,
+      cropRect: {
+        x: rect.x,
+        y: rect.y,
+        w: rect.w,
+        h: rect.h
+      },
+      sourcePixelWidth: state.pixelWidth,
+      sourcePixelHeight: state.pixelHeight,
       displayWidth: Math.round(rect.w),
       displayHeight: Math.round(rect.h),
       pixelWidth: sw,

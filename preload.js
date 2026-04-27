@@ -77,6 +77,48 @@ function clampNumber(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+function getEditorFrame(options) {
+  const bounds = options.bounds || { x: 0, y: 0, width: 1200, height: 800 };
+  const screenLeft = bounds.x || 0;
+  const screenTop = bounds.y || 0;
+  const screenRight = screenLeft + bounds.width;
+  const imageX = Math.round(options.imageX !== undefined ? options.imageX : screenLeft);
+  const imageY = Math.round(options.imageY !== undefined ? options.imageY : screenTop);
+  const imageWidth = Math.max(1, Math.round(options.imageWidth || 1));
+  const imageHeight = Math.max(1, Math.round(options.imageHeight || 1));
+  const toolbarWidth = Math.max(120, Math.round(options.toolbarWidth || 1040));
+  const toolbarHeight = Math.max(40, Math.round(options.toolbarHeight || 58));
+  const padding = Math.max(0, Math.round(options.padding || 8));
+  const toolbarRightLimit = Math.max(screenLeft, screenRight - Math.min(toolbarWidth, bounds.width));
+  const toolbarX = clampNumber(imageX, screenLeft, toolbarRightLimit);
+  const x = Math.max(screenLeft, Math.min(imageX - padding, toolbarX - padding, imageX));
+  const y = Math.max(screenTop, imageY - padding);
+  const imageOffsetX = Math.max(0, imageX - x);
+  const imageOffsetY = Math.max(0, imageY - y);
+  const toolbarOffsetX = Math.max(0, toolbarX - x);
+  const toolbarOffsetY = imageOffsetY + imageHeight;
+  const width = Math.max(
+    120,
+    imageOffsetX + imageWidth,
+    toolbarOffsetX + toolbarWidth
+  );
+  const height = Math.max(
+    80,
+    imageOffsetY + imageHeight,
+    toolbarOffsetY + toolbarHeight
+  );
+
+  return {
+    x,
+    y,
+    width,
+    height,
+    imageOffsetX,
+    imageOffsetY,
+    toolbarOffsetX
+  };
+}
+
 function getWindowPosition(width, height) {
   const point = window.utools.getCursorScreenPoint();
   const display = window.utools.getDisplayNearestPoint(point);
@@ -224,7 +266,7 @@ function createEditorWindow(dataUrl, options = {}) {
     ? window.utools.getDisplayNearestPoint({ x: options.windowX, y: options.windowY })
     : null;
   const display = selectionDisplay || getCurrentDisplay();
-  const bounds = display.workArea || display.bounds || { width: 1200, height: 800 };
+  const bounds = options.screenBounds || display.bounds || display.workArea || { width: 1200, height: 800 };
   const actualSize = options.displayWidth && options.displayHeight
     ? { width: options.displayWidth, height: options.displayHeight }
     : { width: imageSize.width, height: imageSize.height };
@@ -234,7 +276,7 @@ function createEditorWindow(dataUrl, options = {}) {
   const scale = Math.min(1, maxWidth / actualSize.width, maxImageHeight / actualSize.height);
   const displayWidth = Math.max(1, Math.round(actualSize.width * scale));
   const displayHeight = Math.max(1, Math.round(actualSize.height * scale));
-  const toolbarWidth = 820;
+  const toolbarWidth = 1040;
   let imageOffsetX = 0;
   let imageOffsetY = 0;
   let toolbarOffsetX = 0;
@@ -245,20 +287,21 @@ function createEditorWindow(dataUrl, options = {}) {
   if (hasSelectionPosition) {
     const desiredImageX = Math.round(options.windowX);
     const desiredImageY = Math.round(options.windowY);
-    const screenLeft = bounds.x || 0;
-    const screenRight = screenLeft + bounds.width;
-    const toolbarRightLimit = Math.max(screenLeft, screenRight - Math.min(toolbarWidth, bounds.width));
-    const toolbarX = clampNumber(desiredImageX, screenLeft, toolbarRightLimit);
-    const x = Math.min(desiredImageX, toolbarX);
-
-    imageOffsetX = Math.max(0, desiredImageX - x);
-    toolbarOffsetX = Math.max(0, toolbarX - x);
-    width = Math.max(
-      120,
-      imageOffsetX + displayWidth,
-      toolbarOffsetX + toolbarWidth
-    );
-    position = { x, y: desiredImageY };
+    const frame = getEditorFrame({
+      bounds,
+      imageX: desiredImageX,
+      imageY: desiredImageY,
+      imageWidth: displayWidth,
+      imageHeight: displayHeight,
+      toolbarWidth,
+      toolbarHeight
+    });
+    imageOffsetX = frame.imageOffsetX;
+    imageOffsetY = frame.imageOffsetY;
+    toolbarOffsetX = frame.toolbarOffsetX;
+    width = frame.width;
+    height = frame.height;
+    position = { x: frame.x, y: frame.y };
   } else {
     position = getEditorWindowPosition(width, height);
   }
@@ -295,6 +338,11 @@ function createEditorWindow(dataUrl, options = {}) {
       childWindows.set(win.webContents.id, win);
       win.webContents.send("editor:init", {
         dataUrl,
+        sourceDataUrl: options.sourceDataUrl,
+        screenBounds: options.screenBounds,
+        cropRect: options.cropRect,
+        sourcePixelWidth: options.sourcePixelWidth,
+        sourcePixelHeight: options.sourcePixelHeight,
         displayWidth,
         displayHeight,
         imageOffsetX,
@@ -431,6 +479,24 @@ ipcRenderer.on("editor:resize", (event, payload) => {
   win.setSize(width, height);
 });
 
+ipcRenderer.on("editor:layout", (event, payload) => {
+  const win = getChildWindow(event);
+  if (!win) return;
+  const data = typeof payload === "string" ? JSON.parse(payload) : payload;
+  const bounds = {
+    x: Math.round(Number(data.x) || 0),
+    y: Math.round(Number(data.y) || 0),
+    width: Math.max(120, Math.round(Number(data.width) || 120)),
+    height: Math.max(80, Math.round(Number(data.height) || 80))
+  };
+  try {
+    win.setBounds(bounds);
+  } catch (error) {
+    win.setPosition(bounds.x, bounds.y);
+    win.setSize(bounds.width, bounds.height);
+  }
+});
+
 ipcRenderer.on("pin:opacity", (event, payload) => {
   const win = getChildWindow(event);
   if (!win) return;
@@ -459,6 +525,11 @@ ipcRenderer.on("selection:complete", (event, payload) => {
     win.destroy();
   }
   createEditorWindow(data.dataUrl, {
+    sourceDataUrl: data.sourceDataUrl,
+    screenBounds: data.screenBounds,
+    cropRect: data.cropRect,
+    sourcePixelWidth: data.sourcePixelWidth,
+    sourcePixelHeight: data.sourcePixelHeight,
     displayWidth: data.displayWidth,
     displayHeight: data.displayHeight,
     pixelWidth: data.pixelWidth,
@@ -469,29 +540,6 @@ ipcRenderer.on("selection:complete", (event, payload) => {
 });
 
 window.screenshotMarker = {
-  captureScreen(options = {}) {
-    return new Promise((resolve, reject) => {
-      if (!window.utools || !window.utools.screenCapture) {
-        reject(new Error("当前环境没有 uTools 截图 API"));
-        return;
-      }
-
-      window.utools.hideMainWindow(true);
-      setTimeout(() => {
-        window.utools.screenCapture((image) => {
-          if (options.restoreMainWindow !== false) {
-            window.utools.showMainWindow();
-          }
-          if (image) {
-            resolve(image);
-          } else {
-            reject(new Error("截图已取消"));
-          }
-        });
-      }, 180);
-    });
-  },
-
   readImageFile(filePath) {
     if (!filePath) {
       throw new Error("图片路径为空");
@@ -557,6 +605,12 @@ window.screenshotMarker = {
   resizeEditor(size) {
     if (window.utools && window.utools.sendToParent) {
       window.utools.sendToParent("editor:resize", JSON.stringify(size));
+    }
+  },
+
+  layoutEditor(frame) {
+    if (window.utools && window.utools.sendToParent) {
+      window.utools.sendToParent("editor:layout", JSON.stringify(frame));
     }
   },
 

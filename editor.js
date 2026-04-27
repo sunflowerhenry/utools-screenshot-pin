@@ -5,6 +5,7 @@ const openBtn = document.getElementById("openBtn");
 const fileInput = document.getElementById("fileInput");
 const emptyState = document.getElementById("emptyState");
 const dropZone = document.getElementById("dropZone");
+const cropOverlay = document.getElementById("cropOverlay");
 const statusEl = document.getElementById("status");
 const undoBtn = document.getElementById("undoBtn");
 const clearBtn = document.getElementById("clearBtn");
@@ -24,6 +25,13 @@ const toolButtons = Array.from(document.querySelectorAll(".tool"));
 const api = window.screenshotMarker || {};
 const state = {
   image: null,
+  sourceImage: null,
+  screenBounds: null,
+  cropRect: null,
+  cropAction: "",
+  cropHandle: "",
+  cropStartPoint: null,
+  cropStartRect: null,
   baseDisplayWidth: 0,
   baseDisplayHeight: 0,
   displayWidth: 0,
@@ -46,12 +54,21 @@ function setStatus(message) {
   statusEl.textContent = message;
 }
 
+function hasCropSource() {
+  return Boolean(state.sourceImage && state.cropRect && state.screenBounds);
+}
+
 function setTool(tool) {
+  if (tool === "crop" && !hasCropSource()) {
+    setStatus("只有通过截图选择层进入的图片可以调整选区");
+    return;
+  }
   state.tool = tool;
   toolButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.tool === tool);
   });
   canvas.classList.toggle("drawing", tool !== "move");
+  updateCropOverlay();
 }
 
 function updateButtons() {
@@ -64,6 +81,18 @@ function updateButtons() {
   saveBtn.disabled = !hasImage;
   emptyState.classList.toggle("hidden", hasImage);
   canvas.classList.toggle("hidden", !hasImage);
+  updateCropOverlay();
+}
+
+function updateCropOverlay() {
+  if (!cropOverlay) return;
+  const visible = state.tool === "crop" && hasCropSource();
+  cropOverlay.classList.toggle("hidden", !visible);
+  if (!visible) return;
+  cropOverlay.style.left = `${state.imageOffsetX}px`;
+  cropOverlay.style.top = `${state.imageOffsetY}px`;
+  cropOverlay.style.width = `${state.displayWidth}px`;
+  cropOverlay.style.height = `${state.displayHeight}px`;
 }
 
 function getToolbarHeight() {
@@ -73,7 +102,148 @@ function getToolbarHeight() {
 
 function getToolbarWidth() {
   const toolbar = document.querySelector(".toolbar");
-  return Math.ceil((toolbar && toolbar.getBoundingClientRect().width) || 430);
+  return Math.ceil((toolbar && toolbar.getBoundingClientRect().width) || 1040);
+}
+
+function clamp(value, min, max) {
+  if (max < min) return min;
+  return Math.min(max, Math.max(min, value));
+}
+
+function normalizeBounds(bounds) {
+  return {
+    x: Math.round(Number(bounds && bounds.x) || 0),
+    y: Math.round(Number(bounds && bounds.y) || 0),
+    width: Math.max(1, Math.round(Number(bounds && bounds.width) || window.innerWidth || 1)),
+    height: Math.max(1, Math.round(Number(bounds && bounds.height) || window.innerHeight || 1))
+  };
+}
+
+function normalizeCropRect(rect) {
+  const bounds = state.screenBounds || normalizeBounds();
+  const minSize = 16;
+  const x = Math.min(rect.x, rect.x + rect.w);
+  const y = Math.min(rect.y, rect.y + rect.h);
+  const w = Math.abs(rect.w);
+  const h = Math.abs(rect.h);
+  const nextX = clamp(x, 0, Math.max(0, bounds.width - minSize));
+  const nextY = clamp(y, 0, Math.max(0, bounds.height - minSize));
+
+  return {
+    x: nextX,
+    y: nextY,
+    w: clamp(w, minSize, bounds.width - nextX),
+    h: clamp(h, minSize, bounds.height - nextY)
+  };
+}
+
+function getCropPixelBox(rect = state.cropRect) {
+  if (!state.sourceImage || !rect || !state.screenBounds) return null;
+  const scaleX = state.sourceImage.naturalWidth / state.screenBounds.width;
+  const scaleY = state.sourceImage.naturalHeight / state.screenBounds.height;
+
+  return {
+    sx: Math.round(rect.x * scaleX),
+    sy: Math.round(rect.y * scaleY),
+    sw: Math.max(1, Math.round(rect.w * scaleX)),
+    sh: Math.max(1, Math.round(rect.h * scaleY))
+  };
+}
+
+function updateCanvasFromCrop(updateDisplay = true) {
+  const box = getCropPixelBox();
+  if (!box) return;
+  canvas.width = box.sw;
+  canvas.height = box.sh;
+  state.baseDisplayWidth = Math.max(1, Math.round(state.cropRect.w));
+  state.baseDisplayHeight = Math.max(1, Math.round(state.cropRect.h));
+  updatePixelLabel();
+  if (updateDisplay) {
+    applyDisplaySize();
+  }
+}
+
+function shiftAnnotation(item, dx, dy) {
+  if (!item) return;
+  if (item.type === "pen" && Array.isArray(item.points)) {
+    item.points.forEach((point) => {
+      point.x += dx;
+      point.y += dy;
+    });
+    return;
+  }
+  if (item.type === "line" || item.type === "arrow") {
+    item.x1 += dx;
+    item.y1 += dy;
+    item.x2 += dx;
+    item.y2 += dy;
+    return;
+  }
+  if ("x" in item) item.x += dx;
+  if ("y" in item) item.y += dy;
+}
+
+function setCropRect(nextRect) {
+  if (!hasCropSource()) return;
+  const oldBox = getCropPixelBox();
+  state.cropRect = normalizeCropRect(nextRect);
+  const nextBox = getCropPixelBox();
+
+  if (oldBox && nextBox) {
+    const dx = oldBox.sx - nextBox.sx;
+    const dy = oldBox.sy - nextBox.sy;
+    state.annotations.forEach((item) => shiftAnnotation(item, dx, dy));
+    shiftAnnotation(state.current, dx, dy);
+  }
+
+  updateCanvasFromCrop();
+  render();
+  updateButtons();
+}
+
+function computeEditorLayout() {
+  const toolbarHeight = getToolbarHeight();
+  const toolbarWidth = getToolbarWidth();
+  const bounds = state.screenBounds || normalizeBounds({
+    width: window.screen && window.screen.availWidth,
+    height: window.screen && window.screen.availHeight
+  });
+  const cropRect = state.cropRect || { x: 0, y: 0, w: state.displayWidth, h: state.displayHeight };
+  const imageX = Math.round((bounds.x || 0) + cropRect.x);
+  const imageY = Math.round((bounds.y || 0) + cropRect.y);
+  const screenLeft = bounds.x || 0;
+  const screenTop = bounds.y || 0;
+  const screenRight = screenLeft + bounds.width;
+  const padding = 8;
+  const toolbarRightLimit = Math.max(screenLeft, screenRight - Math.min(toolbarWidth, bounds.width));
+  const toolbarX = clamp(imageX, screenLeft, toolbarRightLimit);
+  const x = Math.max(screenLeft, Math.min(imageX - padding, toolbarX - padding, imageX));
+  const y = Math.max(screenTop, imageY - padding);
+  const imageOffsetX = Math.max(0, imageX - x);
+  const imageOffsetY = Math.max(0, imageY - y);
+  const toolbarOffsetX = Math.max(0, toolbarX - x);
+  const toolbarTop = imageOffsetY + state.displayHeight;
+  const width = Math.max(
+    120,
+    imageOffsetX + state.displayWidth,
+    toolbarOffsetX + toolbarWidth
+  );
+  const height = Math.max(
+    80,
+    imageOffsetY + state.displayHeight,
+    toolbarTop + toolbarHeight
+  );
+
+  return {
+    x,
+    y,
+    width,
+    height,
+    imageOffsetX,
+    imageOffsetY,
+    toolbarOffsetX,
+    toolbarTop
+  };
 }
 
 function updateZoomLabel() {
@@ -93,17 +263,32 @@ function applyDisplaySize() {
   state.displayHeight = Math.max(1, Math.round(state.baseDisplayHeight * state.zoom));
   const toolbarHeight = getToolbarHeight();
   const toolbarWidth = getToolbarWidth();
-  const toolbarTop = state.imageOffsetY + state.displayHeight;
+  const layout = hasCropSource() ? computeEditorLayout() : null;
+  if (layout) {
+    state.imageOffsetX = layout.imageOffsetX;
+    state.imageOffsetY = layout.imageOffsetY;
+    state.toolbarOffsetX = layout.toolbarOffsetX;
+  }
+  const toolbarTop = layout ? layout.toolbarTop : state.imageOffsetY + state.displayHeight;
   canvas.style.width = `${state.displayWidth}px`;
   canvas.style.height = `${state.displayHeight}px`;
   document.documentElement.style.setProperty("--image-left", `${state.imageOffsetX}px`);
   document.documentElement.style.setProperty("--image-top", `${state.imageOffsetY}px`);
+  document.documentElement.style.setProperty("--image-width", `${state.displayWidth}px`);
   document.documentElement.style.setProperty("--image-height", `${state.displayHeight}px`);
   document.documentElement.style.setProperty("--toolbar-left", `${state.toolbarOffsetX}px`);
   document.documentElement.style.setProperty("--toolbar-top", `${toolbarTop}px`);
   updateZoomLabel();
+  updateCropOverlay();
 
-  if (api.resizeEditor) {
+  if (layout && api.layoutEditor) {
+    api.layoutEditor({
+      x: layout.x,
+      y: layout.y,
+      width: layout.width,
+      height: layout.height
+    });
+  } else if (api.resizeEditor) {
     api.resizeEditor({
       width: Math.max(
         120,
@@ -148,13 +333,19 @@ function loadImage(dataUrl) {
 
 async function setImage(dataUrl, message, displaySize = {}) {
   const image = await loadImage(dataUrl);
+  const sourceImage = displaySize.sourceDataUrl
+    ? await loadImage(displaySize.sourceDataUrl)
+    : null;
   state.image = image;
+  state.sourceImage = sourceImage;
+  state.screenBounds = sourceImage ? normalizeBounds(displaySize.screenBounds) : null;
+  state.cropRect = sourceImage && displaySize.cropRect
+    ? normalizeCropRect(displaySize.cropRect)
+    : null;
   state.annotations = [];
   state.current = null;
   state.nextNumber = 1;
   state.zoom = 1;
-  canvas.width = image.naturalWidth || image.width;
-  canvas.height = image.naturalHeight || image.height;
   state.imageOffsetX = Math.max(0, Math.round(Number(displaySize.imageOffsetX) || 0));
   state.imageOffsetY = Math.max(0, Math.round(Number(displaySize.imageOffsetY) || 0));
   const toolbarOffsetX = Number(displaySize.toolbarOffsetX);
@@ -162,12 +353,21 @@ async function setImage(dataUrl, message, displaySize = {}) {
     0,
     Math.round(Number.isFinite(toolbarOffsetX) ? toolbarOffsetX : state.imageOffsetX)
   );
+  if (hasCropSource()) {
+    updateCanvasFromCrop(false);
+  } else {
+    canvas.width = image.naturalWidth || image.width;
+    canvas.height = image.naturalHeight || image.height;
+  }
   updatePixelLabel();
-  const defaultDisplaySize = getDefaultDisplaySize(displaySize);
+  const defaultDisplaySize = hasCropSource()
+    ? { width: state.cropRect.w, height: state.cropRect.h }
+    : getDefaultDisplaySize(displaySize);
   state.baseDisplayWidth = defaultDisplaySize.width;
   state.baseDisplayHeight = defaultDisplaySize.height;
   applyDisplaySize();
   render();
+  setTool("move");
   updateButtons();
   setStatus(message || `已载入图片 ${canvas.width} x ${canvas.height}`);
 }
@@ -309,14 +509,23 @@ function drawAnnotation(context, item) {
   context.restore();
 }
 
+function drawBaseImage(context) {
+  if (hasCropSource()) {
+    const box = getCropPixelBox();
+    context.drawImage(state.sourceImage, box.sx, box.sy, box.sw, box.sh, 0, 0, canvas.width, canvas.height);
+    return;
+  }
+  if (state.image) {
+    context.drawImage(state.image, 0, 0, canvas.width, canvas.height);
+    return;
+  }
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+}
+
 function render(extra) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  if (state.image) {
-    ctx.drawImage(state.image, 0, 0, canvas.width, canvas.height);
-  } else {
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
+  drawBaseImage(ctx);
 
   state.annotations.forEach((item) => drawAnnotation(ctx, item));
   if (extra) {
@@ -413,7 +622,10 @@ function exportImage() {
   output.width = canvas.width;
   output.height = canvas.height;
   const outputCtx = output.getContext("2d");
-  if (state.image) {
+  if (hasCropSource()) {
+    const box = getCropPixelBox();
+    outputCtx.drawImage(state.sourceImage, box.sx, box.sy, box.sw, box.sh, 0, 0, output.width, output.height);
+  } else if (state.image) {
     outputCtx.drawImage(state.image, 0, 0, output.width, output.height);
   }
   state.annotations.forEach((item) => drawAnnotation(outputCtx, item));
@@ -440,9 +652,14 @@ async function startCapture() {
   if (state.capturing) return;
   state.capturing = true;
   try {
-    setStatus("正在进入截图模式...");
-    const dataUrl = await api.captureScreen();
-    await setImage(dataUrl, "截图完成，可以开始标记");
+    setStatus("正在打开截图选择层...");
+    if (!api.openSelection) {
+      throw new Error("当前环境没有自建截图选择层");
+    }
+    await api.openSelection();
+    if (window.utools) {
+      window.utools.outPlugin();
+    }
   } catch (error) {
     setStatus(error.message || "截图失败");
   } finally {
@@ -513,6 +730,125 @@ actualSizeBtn.addEventListener("click", () => {
   setZoom(Math.min(canvas.width / state.baseDisplayWidth, canvas.height / state.baseDisplayHeight));
 });
 
+function openTextEditor(event, point) {
+  const existing = document.querySelector(".text-editor");
+  if (existing) existing.remove();
+
+  const input = document.createElement("textarea");
+  input.className = "text-editor";
+  input.rows = 1;
+  input.style.left = `${event.clientX}px`;
+  input.style.top = `${event.clientY}px`;
+  input.style.color = state.color;
+  input.style.fontSize = `${Math.max(18, state.size * 5)}px`;
+  document.body.appendChild(input);
+  input.focus();
+
+  let done = false;
+  const commit = () => {
+    if (done) return;
+    done = true;
+    const text = input.value.trim();
+    input.remove();
+    if (!text) return;
+    state.annotations.push({
+      type: "text",
+      text,
+      color: state.color,
+      size: state.size,
+      x: point.x,
+      y: point.y
+    });
+    render();
+    updateButtons();
+  };
+  const cancel = () => {
+    done = true;
+    input.remove();
+  };
+
+  input.addEventListener("keydown", (keyboardEvent) => {
+    if (keyboardEvent.key === "Escape") {
+      keyboardEvent.preventDefault();
+      cancel();
+      return;
+    }
+    if (keyboardEvent.key === "Enter" && !keyboardEvent.shiftKey) {
+      keyboardEvent.preventDefault();
+      commit();
+    }
+  });
+  input.addEventListener("blur", commit, { once: true });
+}
+
+function getCropPointer(event) {
+  return {
+    x: Number.isFinite(event.screenX) ? event.screenX : event.clientX,
+    y: Number.isFinite(event.screenY) ? event.screenY : event.clientY
+  };
+}
+
+function updateCropFromPointer(point) {
+  if (!state.cropStartRect || !state.cropStartPoint) return;
+  const dx = (point.x - state.cropStartPoint.x) / state.zoom;
+  const dy = (point.y - state.cropStartPoint.y) / state.zoom;
+  const rect = state.cropStartRect;
+  const next = { ...rect };
+
+  if (state.cropAction === "move") {
+    next.x = rect.x + dx;
+    next.y = rect.y + dy;
+  } else {
+    if (state.cropHandle.includes("e")) next.w = rect.w + dx;
+    if (state.cropHandle.includes("s")) next.h = rect.h + dy;
+    if (state.cropHandle.includes("w")) {
+      next.x = rect.x + dx;
+      next.w = rect.w - dx;
+    }
+    if (state.cropHandle.includes("n")) {
+      next.y = rect.y + dy;
+      next.h = rect.h - dy;
+    }
+  }
+
+  setCropRect(next);
+}
+
+if (cropOverlay) {
+  cropOverlay.addEventListener("pointerdown", (event) => {
+    if (state.tool !== "crop" || !hasCropSource()) return;
+    event.preventDefault();
+    event.stopPropagation();
+    state.cropHandle = event.target.dataset.cropHandle || "";
+    state.cropAction = state.cropHandle ? "resize" : "move";
+    state.cropStartPoint = getCropPointer(event);
+    state.cropStartRect = { ...state.cropRect };
+    cropOverlay.setPointerCapture(event.pointerId);
+  });
+
+  cropOverlay.addEventListener("pointermove", (event) => {
+    if (!state.cropAction) return;
+    event.preventDefault();
+    updateCropFromPointer(getCropPointer(event));
+  });
+
+  cropOverlay.addEventListener("pointerup", (event) => {
+    if (!state.cropAction) return;
+    state.cropAction = "";
+    state.cropHandle = "";
+    state.cropStartPoint = null;
+    state.cropStartRect = null;
+    cropOverlay.releasePointerCapture(event.pointerId);
+  });
+
+  cropOverlay.addEventListener("pointercancel", () => {
+    state.cropAction = "";
+    state.cropHandle = "";
+    state.cropStartPoint = null;
+    state.cropStartRect = null;
+  });
+}
+
 canvas.addEventListener("wheel", (event) => {
   if (!event.metaKey && !event.ctrlKey) return;
   event.preventDefault();
@@ -522,22 +858,11 @@ canvas.addEventListener("wheel", (event) => {
 canvas.addEventListener("pointerdown", (event) => {
   if (!state.image) return;
   if (state.tool === "move") return;
+  if (state.tool === "crop") return;
   const point = getPointer(event);
 
   if (state.tool === "text") {
-    const text = window.prompt("输入标记文字");
-    if (text && text.trim()) {
-      state.annotations.push({
-        type: "text",
-        text: text.trim(),
-        color: state.color,
-        size: state.size,
-        x: point.x,
-        y: point.y
-      });
-      render();
-      updateButtons();
-    }
+    openTextEditor(event, point);
     return;
   }
 
@@ -713,6 +1038,11 @@ if (window.utools) {
 window.addEventListener("editor:init", async (event) => {
   try {
     await setImage(event.detail.dataUrl, "截图完成，可以开始标记", {
+      sourceDataUrl: event.detail.sourceDataUrl,
+      screenBounds: event.detail.screenBounds,
+      cropRect: event.detail.cropRect,
+      sourcePixelWidth: event.detail.sourcePixelWidth,
+      sourcePixelHeight: event.detail.sourcePixelHeight,
       width: event.detail.displayWidth,
       height: event.detail.displayHeight,
       imageOffsetX: event.detail.imageOffsetX,
