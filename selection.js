@@ -1,6 +1,7 @@
 const surface = document.getElementById("surface");
 const screenImage = document.getElementById("screenImage");
 const selection = document.getElementById("selection");
+const guide = document.getElementById("guide");
 const sizeLabel = document.getElementById("sizeLabel");
 const actions = document.getElementById("actions");
 const confirmBtn = document.getElementById("confirmBtn");
@@ -43,12 +44,14 @@ function pixelSize(rect) {
 function render() {
   if (!state.rect || state.rect.w < 1 || state.rect.h < 1) {
     selection.classList.add("hidden");
+    guide.classList.remove("hidden");
     sizeLabel.classList.add("hidden");
     actions.classList.add("hidden");
     return;
   }
 
   const rect = state.rect;
+  guide.classList.add("hidden");
   selection.classList.remove("hidden");
   selection.style.left = `${rect.x}px`;
   selection.style.top = `${rect.y}px`;
@@ -110,6 +113,7 @@ function moveRect(point) {
 }
 
 surface.addEventListener("pointerdown", (event) => {
+  if (event.target.closest("button")) return;
   const point = pointFromEvent(event);
   const handle = event.target.dataset.handle;
   state.start = point;
@@ -127,6 +131,10 @@ surface.addEventListener("pointerdown", (event) => {
 
   surface.setPointerCapture(event.pointerId);
   render();
+});
+
+actions.addEventListener("pointerdown", (event) => {
+  event.stopPropagation();
 });
 
 surface.addEventListener("pointermove", (event) => {

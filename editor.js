@@ -32,6 +32,7 @@ const state = {
   cropHandle: "",
   cropStartPoint: null,
   cropStartRect: null,
+  overlayEditor: false,
   baseDisplayWidth: 0,
   baseDisplayHeight: 0,
   displayWidth: 0,
@@ -209,12 +210,39 @@ function computeEditorLayout() {
     height: window.screen && window.screen.availHeight
   });
   const cropRect = state.cropRect || { x: 0, y: 0, w: state.displayWidth, h: state.displayHeight };
+  const padding = 8;
+
+  if (state.overlayEditor) {
+    const imageOffsetX = Math.round(cropRect.x);
+    const imageOffsetY = Math.round(cropRect.y);
+    const toolbarOffsetX = clamp(
+      imageOffsetX,
+      padding,
+      Math.max(padding, bounds.width - toolbarWidth - padding)
+    );
+    const belowTop = imageOffsetY + state.displayHeight + 6;
+    const aboveTop = imageOffsetY - toolbarHeight - 6;
+    const toolbarTop = belowTop + toolbarHeight <= bounds.height - padding
+      ? belowTop
+      : clamp(aboveTop, padding, Math.max(padding, bounds.height - toolbarHeight - padding));
+
+    return {
+      x: bounds.x || 0,
+      y: bounds.y || 0,
+      width: bounds.width,
+      height: bounds.height,
+      imageOffsetX,
+      imageOffsetY,
+      toolbarOffsetX,
+      toolbarTop
+    };
+  }
+
   const imageX = Math.round((bounds.x || 0) + cropRect.x);
   const imageY = Math.round((bounds.y || 0) + cropRect.y);
   const screenLeft = bounds.x || 0;
   const screenTop = bounds.y || 0;
   const screenRight = screenLeft + bounds.width;
-  const padding = 8;
   const toolbarRightLimit = Math.max(screenLeft, screenRight - Math.min(toolbarWidth, bounds.width));
   const toolbarX = clamp(imageX, screenLeft, toolbarRightLimit);
   const x = Math.max(screenLeft, Math.min(imageX - padding, toolbarX - padding, imageX));
@@ -223,16 +251,8 @@ function computeEditorLayout() {
   const imageOffsetY = Math.max(0, imageY - y);
   const toolbarOffsetX = Math.max(0, toolbarX - x);
   const toolbarTop = imageOffsetY + state.displayHeight;
-  const width = Math.max(
-    120,
-    imageOffsetX + state.displayWidth,
-    toolbarOffsetX + toolbarWidth
-  );
-  const height = Math.max(
-    80,
-    imageOffsetY + state.displayHeight,
-    toolbarTop + toolbarHeight
-  );
+  const width = Math.max(120, imageOffsetX + state.displayWidth, toolbarOffsetX + toolbarWidth);
+  const height = Math.max(80, imageOffsetY + state.displayHeight, toolbarTop + toolbarHeight);
 
   return {
     x,
@@ -342,6 +362,8 @@ async function setImage(dataUrl, message, displaySize = {}) {
   state.cropRect = sourceImage && displaySize.cropRect
     ? normalizeCropRect(displaySize.cropRect)
     : null;
+  state.overlayEditor = Boolean(sourceImage && displaySize.overlayEditor);
+  document.body.classList.toggle("overlay-editor", state.overlayEditor);
   state.annotations = [];
   state.current = null;
   state.nextNumber = 1;
@@ -1043,6 +1065,7 @@ window.addEventListener("editor:init", async (event) => {
       cropRect: event.detail.cropRect,
       sourcePixelWidth: event.detail.sourcePixelWidth,
       sourcePixelHeight: event.detail.sourcePixelHeight,
+      overlayEditor: event.detail.overlayEditor,
       width: event.detail.displayWidth,
       height: event.detail.displayHeight,
       imageOffsetX: event.detail.imageOffsetX,

@@ -36,12 +36,55 @@ body {
   pointer-events: none;
 }
 
+.guide {
+  position: fixed;
+  left: 50%;
+  top: 18px;
+  z-index: 4;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: #fff;
+  background: rgba(16, 20, 28, 0.82);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.guide.hidden {
+  display: none;
+}
+
 .selection {
   position: fixed;
   border: 1px solid #2f7dff;
   background: rgba(47, 125, 255, 0.08);
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.34);
+  box-shadow:
+    0 0 0 9999px rgba(0, 0, 0, 0.34),
+    0 0 0 1px rgba(255, 255, 255, 0.88);
   cursor: move;
+}
+
+.selection::before,
+.selection::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: rgba(255, 255, 255, 0.72);
+  pointer-events: none;
+}
+
+.selection::before {
+  width: 100%;
+  height: 1px;
+  transform: translate(-50%, -50%);
+}
+
+.selection::after {
+  width: 1px;
+  height: 100%;
+  transform: translate(-50%, -50%);
 }
 
 .hidden {
@@ -69,7 +112,7 @@ body {
 .size-label,
 .actions {
   position: fixed;
-  z-index: 3;
+  z-index: 5;
   border-radius: 6px;
   color: #fff;
   background: rgba(16, 20, 28, 0.88);

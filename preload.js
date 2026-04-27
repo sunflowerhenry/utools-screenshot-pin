@@ -261,6 +261,7 @@ function createEditorWindow(dataUrl, options = {}) {
   if (image.isEmpty() || !imageSize.width || !imageSize.height) {
     throw new Error("截图图片为空");
   }
+  const hasCropSource = Boolean(options.sourceDataUrl && options.cropRect && options.screenBounds);
   const hasSelectionPosition = options.windowX !== undefined && options.windowY !== undefined;
   const selectionDisplay = hasSelectionPosition && window.utools && window.utools.getDisplayNearestPoint
     ? window.utools.getDisplayNearestPoint({ x: options.windowX, y: options.windowY })
@@ -284,7 +285,15 @@ function createEditorWindow(dataUrl, options = {}) {
   let height = displayHeight + toolbarHeight;
   let position;
 
-  if (hasSelectionPosition) {
+  if (hasCropSource) {
+    const cropRect = options.cropRect;
+    imageOffsetX = Math.max(0, Math.round(cropRect.x || 0));
+    imageOffsetY = Math.max(0, Math.round(cropRect.y || 0));
+    toolbarOffsetX = clampNumber(imageOffsetX, 8, Math.max(8, bounds.width - toolbarWidth - 8));
+    width = bounds.width;
+    height = bounds.height;
+    position = { x: bounds.x || 0, y: bounds.y || 0 };
+  } else if (hasSelectionPosition) {
     const desiredImageX = Math.round(options.windowX);
     const desiredImageY = Math.round(options.windowY);
     const frame = getEditorFrame({
@@ -325,7 +334,8 @@ function createEditorWindow(dataUrl, options = {}) {
       backgroundColor: "#00000000",
       roundedCorners: false,
       hasShadow: false,
-      resizable: true,
+      resizable: !hasCropSource,
+      movable: !hasCropSource,
       skipTaskbar: true,
       closeable: true,
       enableLargerThanScreen: true,
@@ -343,6 +353,7 @@ function createEditorWindow(dataUrl, options = {}) {
         cropRect: options.cropRect,
         sourcePixelWidth: options.sourcePixelWidth,
         sourcePixelHeight: options.sourcePixelHeight,
+        overlayEditor: hasCropSource,
         displayWidth,
         displayHeight,
         imageOffsetX,

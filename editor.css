@@ -73,6 +73,11 @@ canvas.drawing {
   -webkit-app-region: no-drag;
 }
 
+body.overlay-editor canvas {
+  cursor: default;
+  -webkit-app-region: no-drag;
+}
+
 canvas.hidden {
   display: none;
 }
@@ -124,6 +129,8 @@ canvas.hidden {
   justify-content: center;
   gap: 5px;
   width: max-content;
+  max-width: calc(100vw - 16px);
+  overflow-x: auto;
   white-space: nowrap;
   border: 1px solid var(--line);
   border-radius: 7px;
