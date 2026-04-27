@@ -69,6 +69,7 @@ function setTool(tool) {
     button.classList.toggle("active", button.dataset.tool === tool);
   });
   canvas.classList.toggle("drawing", tool !== "move" && tool !== "crop");
+  canvas.classList.toggle("movable", tool === "move");
   updateCropOverlay();
 }
 
@@ -896,6 +897,7 @@ canvas.addEventListener("wheel", (event) => {
 
 canvas.addEventListener("pointerdown", (event) => {
   if (!state.image) return;
+  event.preventDefault();
   if (state.tool === "move") return;
   if (state.tool === "crop") return;
   const point = getPointer(event);
