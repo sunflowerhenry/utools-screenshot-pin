@@ -138,6 +138,10 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function withCacheBust(file) {
+  return `${file}?v=${Date.now()}`;
+}
+
 function getCurrentDisplay() {
   const point = window.utools.getCursorScreenPoint();
   const display = window.utools.getDisplayNearestPoint(point);
@@ -318,7 +322,7 @@ function createEditorWindow(dataUrl, options = {}) {
   const x = position.x;
   const y = position.y;
   const win = window.utools.createBrowserWindow(
-    "editor.html",
+    withCacheBust("editor.html"),
     {
       show: false,
       x,
@@ -418,7 +422,7 @@ async function openSelectionWindow() {
   const capture = await captureCurrentDisplay();
   const bounds = capture.bounds;
   const win = window.utools.createBrowserWindow(
-    "selection.html",
+    withCacheBust("selection.html"),
     {
       show: false,
       x: bounds.x || 0,

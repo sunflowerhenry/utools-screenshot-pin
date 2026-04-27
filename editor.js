@@ -718,6 +718,14 @@ function normalizeFilePayload(payload) {
   return null;
 }
 
+function closeEditorWindow() {
+  if (api.closeWindow) {
+    api.closeWindow();
+    return;
+  }
+  window.close();
+}
+
 if (captureBtn) {
   captureBtn.addEventListener("click", startCapture);
 }
@@ -753,18 +761,24 @@ actualSizeBtn.addEventListener("click", () => {
 });
 
 function openTextEditor(event, point) {
+  event.preventDefault();
+  event.stopPropagation();
   const existing = document.querySelector(".text-editor");
   if (existing) existing.remove();
 
   const input = document.createElement("textarea");
   input.className = "text-editor";
   input.rows = 1;
+  input.placeholder = "输入文字";
   input.style.left = `${event.clientX}px`;
   input.style.top = `${event.clientY}px`;
   input.style.color = state.color;
   input.style.fontSize = `${Math.max(18, state.size * 5)}px`;
   document.body.appendChild(input);
-  input.focus();
+  requestAnimationFrame(() => {
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  });
 
   let done = false;
   const commit = () => {
@@ -799,6 +813,9 @@ function openTextEditor(event, point) {
       keyboardEvent.preventDefault();
       commit();
     }
+  });
+  input.addEventListener("pointerdown", (pointerEvent) => {
+    pointerEvent.stopPropagation();
   });
   input.addEventListener("blur", commit, { once: true });
 }
@@ -960,11 +977,11 @@ copyBtn.addEventListener("click", async () => {
     const dataUrl = exportImage();
     if (api.copyImage) {
       api.copyImage(dataUrl);
-      setStatus("已复制到剪贴板");
+      closeEditorWindow();
       return;
     }
     await navigator.clipboard.writeText(dataUrl);
-    setStatus("当前环境仅能复制图片 Data URL");
+    closeEditorWindow();
   } catch (error) {
     setStatus(error.message || "复制失败");
   }
@@ -988,11 +1005,7 @@ saveBtn.addEventListener("click", () => {
 });
 
 closeBtn.addEventListener("click", () => {
-  if (api.closeWindow) {
-    api.closeWindow();
-    return;
-  }
-  window.close();
+  closeEditorWindow();
 });
 
 dropZone.addEventListener("dragover", (event) => {
@@ -1079,11 +1092,7 @@ window.addEventListener("editor:init", async (event) => {
 
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
-    if (api.closeWindow) {
-      api.closeWindow();
-      return;
-    }
-    window.close();
+    closeEditorWindow();
   }
 });
 

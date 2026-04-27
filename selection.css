@@ -57,6 +57,7 @@ body {
 
 .selection {
   position: fixed;
+  z-index: 4;
   border: 1px solid #2f7dff;
   background: rgba(47, 125, 255, 0.08);
   box-shadow:
